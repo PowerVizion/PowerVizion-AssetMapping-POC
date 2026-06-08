@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BarChart3, Download, Eye, FileWarning, Gauge, MapPin, Save, ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BarChart3, CheckCircle2, Download, Eye, FileWarning, Gauge, MapPin, PlayCircle, Save, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import './styles.css';
 
 const emptyForm = {
@@ -37,9 +37,13 @@ function Badge({ value }) {
     'Field Verified': 'good',
     'Export Ready': 'good',
     'Human Verified': 'good',
+    'Local Ready': 'good',
     'Data Exception Found': 'warn',
     'Client Review Required': 'warn',
     'Needs Client Review': 'warn',
+    'AI Candidate': 'info',
+    'Pending Review': 'info',
+    Imported: 'neutral',
     Rejected: 'bad',
     Critical: 'bad'
   }[value] || 'neutral';
@@ -63,15 +67,35 @@ function Header({ page, setPage }) {
   );
 }
 
-function Dashboard({ summary, assets, setPage }) {
+function Dashboard({ summary, assets, setPage, setSelectedId }) {
   const cards = [
-    ['Asset count', summary.assets, MapPin],
-    ['Media count', summary.media, Eye],
-    ['Candidate count', summary.candidates, SlidersHorizontal],
-    ['Approved components', summary.components, ShieldCheck],
-    ['Data exceptions', summary.exceptions, FileWarning],
-    ['Client review required', summary.clientReview, Gauge]
+    ['Assets', summary.assets, MapPin, 'field locations'],
+    ['Media', summary.media, Eye, '8K frames + pole photos'],
+    ['Candidates', summary.candidates, SlidersHorizontal, 'seeded detections'],
+    ['Approved', summary.components, ShieldCheck, 'component records'],
+    ['Exceptions', summary.exceptions, FileWarning, 'data-quality flags'],
+    ['Client review', summary.clientReview, Gauge, 'requires signoff']
   ];
+  const demoSteps = [
+    ['Open Admin Review', 'Start the reviewer workflow'],
+    ['Click DEMO-STR-001', 'Select the first 8K structure'],
+    ['Review 8K media', 'Move through linked evidence'],
+    ['Approve component', 'Promote a candidate to a record'],
+    ['Add missing data exception', 'Flag nameplate or install-year gaps'],
+    ['Open alley pole', 'Switch to an alley distribution asset'],
+    ['Show Client View', 'Present approved records only'],
+    ['Export register', 'Download the CSV data-quality register']
+  ];
+  const openDemoReview = () => {
+    const demoAsset = assets.find(asset => asset.id === 'DEMO-STR-001') || assets[0];
+    if (demoAsset) setSelectedId(demoAsset.id);
+    setPage('Admin Review');
+  };
+  const mapPositions = assets.map((asset, index) => ({
+    asset,
+    left: 14 + ((index * 19) % 72),
+    top: 24 + ((index * 13) % 52)
+  }));
   return (
     <main className="page">
       <section className="intro">
@@ -81,33 +105,54 @@ function Dashboard({ summary, assets, setPage }) {
           <p>Connect 8K inspection frames and pole photos to asset locations, convert visible components into structured records, and export a client-ready data-quality register.</p>
         </div>
         <div className="introActions">
-          <button onClick={() => setPage('Admin Review')}><SlidersHorizontal size={17} /> Admin Review</button>
+          <button onClick={openDemoReview}><SlidersHorizontal size={17} /> Admin Review</button>
           <button onClick={() => setPage('Client View')}><Eye size={17} /> Client View</button>
         </div>
       </section>
       <section className="metricGrid">
-        {cards.map(([label, value, Icon]) => (
+        {cards.map(([label, value, Icon, helper]) => (
           <div className="metric" key={label}>
-            <Icon size={20} />
+            <div className="metricIcon"><Icon size={20} /></div>
             <span>{label}</span>
             <strong>{value ?? 0}</strong>
+            <small>{helper}</small>
           </div>
         ))}
       </section>
-      <section className="mapPanel">
-        <div className="panelHead">
-          <h2>Asset Location Register</h2>
-          <Badge value="Local/S3 Ready" />
-        </div>
-        <div className="assetMap">
-          {assets.map(asset => (
-            <div className="mapAsset" key={asset.id} style={{ left: `${12 + Math.random() * 72}%`, top: `${18 + Math.random() * 58}%` }}>
-              <span />
-              <small>{asset.structure_number}</small>
-            </div>
-          ))}
-        </div>
-      </section>
+      <div className="dashboardGrid">
+        <section className="mapPanel">
+          <div className="panelHead">
+            <div><h2>Asset Location Register</h2><p>Local demo dataset loaded from workspace files</p></div>
+            <Badge value="Local Ready" />
+          </div>
+          <div className="assetMap">
+            {mapPositions.map(({ asset, left, top }) => (
+              <button className="mapAsset" key={asset.id} style={{ left: `${left}%`, top: `${top}%` }} onClick={() => { setSelectedId(asset.id); setPage('Admin Review'); }}>
+                <span />
+                <small>{asset.structure_number}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="panel demoFlow">
+          <div className="panelHead">
+            <div><h2>Meeting Demo Flow</h2><p>Use this sequence for the live walkthrough</p></div>
+            <PlayCircle size={22} />
+          </div>
+          <ol>
+            {demoSteps.map(([title, detail], index) => (
+              <li key={title}>
+                <span>{index + 1}</span>
+                <div><strong>{title}</strong><small>{detail}</small></div>
+              </li>
+            ))}
+          </ol>
+          <div className="demoActions">
+            <button onClick={openDemoReview}><SlidersHorizontal size={17} /> Start Review</button>
+            <button onClick={() => setPage('Export')}><Download size={17} /> Export</button>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
@@ -115,13 +160,13 @@ function Dashboard({ summary, assets, setPage }) {
 function AssetList({ assets, selectedId, setSelectedId }) {
   return (
     <aside className="assetList">
-      <div className="panelHead"><h2>Assets</h2><span>{assets.length}</span></div>
+      <div className="panelHead"><div><h2>Assets</h2><p>Click a structure or alley pole</p></div><span>{assets.length}</span></div>
       {assets.map(asset => (
         <button key={asset.id} className={selectedId === asset.id ? 'selected assetButton' : 'assetButton'} onClick={() => setSelectedId(asset.id)}>
-          <strong>{asset.structure_number}</strong>
+          <div className="assetButtonTop"><strong>{asset.structure_number}</strong><Badge value={asset.review_status} /></div>
           <code>{asset.id}</code>
           <span>{asset.asset_type}</span>
-          <Badge value={asset.review_status} />
+          <small>{asset.media_count || 0} media | {asset.candidate_count || 0} candidates | {asset.component_count || 0} approved</small>
         </button>
       ))}
     </aside>
@@ -132,11 +177,17 @@ function MediaViewer({ detail, mediaIndex, setMediaIndex }) {
   const media = detail?.media || [];
   const current = media[mediaIndex] || media[0];
   if (!current) return <section className="panel mediaViewer">No linked media</section>;
+  const next = () => setMediaIndex((mediaIndex + 1) % media.length);
+  const previous = () => setMediaIndex((mediaIndex - 1 + media.length) % media.length);
   return (
     <section className="panel mediaViewer">
       <div className="panelHead">
-        <h2>Linked Media</h2>
-        <Badge value={current.capture_method} />
+        <div><h2>Linked Media</h2><p>{mediaIndex + 1} of {media.length} evidence files</p></div>
+        <div className="mediaControls">
+          <button type="button" onClick={previous} aria-label="Previous media"><ArrowLeft size={16} /></button>
+          <button type="button" onClick={next} aria-label="Next media"><ArrowRight size={16} /></button>
+          <Badge value={current.capture_method} />
+        </div>
       </div>
       <div className="imageShell">
         <img src={current.url} alt={current.caption} />
@@ -149,7 +200,10 @@ function MediaViewer({ detail, mediaIndex, setMediaIndex }) {
       </div>
       <div className="thumbs">
         {media.map((item, index) => (
-          <button key={item.id} className={index === mediaIndex ? 'activeThumb' : ''} onClick={() => setMediaIndex(index)}>{item.frame_number || index + 1}</button>
+          <button key={item.id} className={index === mediaIndex ? 'activeThumb' : ''} onClick={() => setMediaIndex(index)}>
+            <span>{index + 1}</span>
+            <small>{item.caption || item.file_name}</small>
+          </button>
         ))}
       </div>
     </section>
@@ -224,7 +278,7 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
             <div className="twoCol">
               <MediaViewer detail={detail} mediaIndex={mediaIndex} setMediaIndex={setMediaIndex} />
               <section className="panel">
-                <div className="panelHead"><h2>AI / Manual Candidates</h2><span>{detail.detections.length}</span></div>
+                <div className="panelHead"><div><h2>AI / Manual Candidates</h2><p>Approve visible components into structured records</p></div><span>{detail.detections.length}</span></div>
                 <div className="candidateList">
                   {detail.detections.map(detection => (
                     <div className="candidate" key={detection.id}>
@@ -242,7 +296,7 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
             </div>
             <div className="twoCol">
               <form className="panel formGrid" onSubmit={saveComponent}>
-                <div className="panelHead"><h2>Component Record</h2><button><Save size={16} /> Save</button></div>
+                <div className="panelHead wide"><div><h2>Component Record</h2><p>Complete structured asset fields for export</p></div><button><Save size={16} /> Save</button></div>
                 <Select label="Component Type" value={form.component_type} options={options['Component Type']} onChange={v => setForm({ ...form, component_type: v })} />
                 <Input label="Component Subtype" value={form.component_subtype} onChange={v => setForm({ ...form, component_subtype: v })} />
                 <Input label="Quantity" type="number" value={form.quantity} onChange={v => setForm({ ...form, quantity: Number(v) })} />
@@ -261,7 +315,7 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
               </form>
               <section className="panel">
                 <form className="formGrid" onSubmit={saveException}>
-                  <div className="panelHead wide"><h2>Data Quality Exception</h2><button><FileWarning size={16} /> Add</button></div>
+                  <div className="panelHead wide"><div><h2>Data Quality Exception</h2><p>Capture missing or conflicting source data</p></div><button><FileWarning size={16} /> Add</button></div>
                   <Select label="Exception Type" value={exception.exception_type} options={options['Exception Type']} onChange={v => setException({ ...exception, exception_type: v })} />
                   <Input label="Recommended Action" value={exception.recommended_action} onChange={v => setException({ ...exception, recommended_action: v })} />
                   <label className="wide">Reviewer Notes<textarea value={exception.reviewer_notes} onChange={event => setException({ ...exception, reviewer_notes: event.target.value })} /></label>
@@ -280,6 +334,8 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
 }
 
 function ClientView({ assets, selectedId, setSelectedId, detail }) {
+  const [mediaIndex, setMediaIndex] = useState(0);
+  useEffect(() => setMediaIndex(0), [selectedId]);
   return (
     <main className="reviewLayout">
       <AssetList assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} />
@@ -287,13 +343,18 @@ function ClientView({ assets, selectedId, setSelectedId, detail }) {
         {detail && (
           <>
             <section className="assetHeader panel">
-              <div><p className="eyebrow">Client asset profile</p><h1>{detail.asset.structure_number}</h1><span>{detail.asset.asset_type} | {detail.asset.client_asset_tag}</span></div>
+              <div><p className="eyebrow">Client asset profile</p><h1>{detail.asset.structure_number}</h1><span>{detail.asset.asset_type} | {detail.asset.client_asset_tag || detail.asset.id}</span></div>
               <Badge value={detail.asset.review_status} />
             </section>
+            <section className="clientSummary">
+              <div><strong>{detail.media.length}</strong><span>Approved media</span></div>
+              <div><strong>{detail.components.length}</strong><span>Verified components</span></div>
+              <div><strong>{detail.exceptions.length}</strong><span>Visible data flags</span></div>
+            </section>
             <div className="twoCol">
-              <MediaViewer detail={detail} mediaIndex={0} setMediaIndex={() => {}} />
+              <MediaViewer detail={detail} mediaIndex={mediaIndex} setMediaIndex={setMediaIndex} />
               <section className="panel">
-                <div className="panelHead"><h2>Verified Components</h2><Badge value="Read Only" /></div>
+                <div className="panelHead"><div><h2>Verified Components</h2><p>Internal candidates and rejected detections are hidden</p></div><Badge value="Read Only" /></div>
                 <CompactTable rows={detail.components} fields={['component_type', 'component_subtype', 'phase', 'condition_rating', 'verified_status']} />
                 <div className="panelHead"><h2>Data Quality Status</h2></div>
                 <CompactTable rows={detail.exceptions} fields={['exception_type', 'recommended_action', 'export_status']} />
@@ -307,15 +368,21 @@ function ClientView({ assets, selectedId, setSelectedId, detail }) {
 }
 
 function ExportPage({ preview }) {
+  const readyRows = preview.filter(row => row.component_type || row.exception_type).length;
   return (
     <main className="page">
       <section className="intro compact">
         <div><p className="eyebrow">CSV export</p><h1>Data-quality register</h1><p>Export the structured review register for client review, remediation planning, or upload into downstream asset systems.</p></div>
         <a className="download" href="http://127.0.0.1:4000/api/export/data-quality-register.csv"><Download size={17} /> Download CSV</a>
       </section>
+      <section className="exportStrip">
+        <div><CheckCircle2 size={18} /><strong>{preview.length}</strong><span>preview rows</span></div>
+        <div><BarChart3 size={18} /><strong>{readyRows}</strong><span>rows with review content</span></div>
+        <div><Download size={18} /><strong>CSV</strong><span>register format</span></div>
+      </section>
       <section className="panel">
-        <div className="panelHead"><h2>Preview</h2><span>{preview.length} rows</span></div>
-        <CompactTable rows={preview} fields={['asset_location_id', 'asset_type', 'structure_number', 'component_type', 'exception_type', 'review_status']} />
+        <div className="panelHead"><div><h2>Register Preview</h2><p>First rows from the export endpoint</p></div><span>{preview.length} rows</span></div>
+        <CompactTable rows={preview} fields={['asset_location_id', 'asset_type', 'structure_number', 'component_type', 'verified_status', 'exception_type', 'review_status']} />
       </section>
     </main>
   );
@@ -379,7 +446,7 @@ function App() {
     if (page === 'Admin Review') return <AdminReview assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} reload={reload} options={options} />;
     if (page === 'Client View') return <ClientView assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} />;
     if (page === 'Export') return <ExportPage preview={preview} />;
-    return <Dashboard summary={summary} assets={assets} setPage={setPage} />;
+    return <Dashboard summary={summary} assets={assets} setPage={setPage} setSelectedId={setSelectedId} />;
   }, [page, assets, selectedId, detail, summary, preview, options]);
 
   return <><Header page={page} setPage={setPage} />{content}</>;
