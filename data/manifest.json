@@ -1,0 +1,26 @@
+{
+    "projectType":  "asset_mapping_poc",
+    "projectId":  "POC-001",
+    "clientName":  "Demo Utility",
+    "projectName":  "PowerVizion Visual Asset Data Quality POC",
+    "description":  "Demo project showing 8K structure review, distribution pole photo review, component tagging, data-quality exceptions, and exportable asset records.",
+    "s3Prefix":  "asset-mapping-poc/demo-utility/",
+    "assetLocationsCsv":  "asset_locations.csv",
+    "assetMediaCsv":  "asset_media.csv",
+    "aiDetectionsJson":  "ai_detections_demo.json",
+    "componentDropdownsCsv":  "component_dropdowns.csv",
+    "dataQualityExceptionTypesCsv":  "data_quality_exception_types.csv",
+    "mediaFolders":  {
+                         "structures":  [
+                                            "8k_DEMO_1",
+                                            "8k_DEMO_2",
+                                            "8k_DEMO_3",
+                                            "8k_DEMO_4",
+                                            "8k_DEMO_5"
+                                        ],
+                         "distribution":  [
+                                              "Alley_DEMO_1",
+                                              "Alley_DEMO_2"
+                                          ]
+                     }
+}

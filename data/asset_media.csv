@@ -1,0 +1,49 @@
+media_id,asset_location_id,media_type,file_name,s3_key,thumbnail_key,source_video_key,frame_number,timecode,capture_method,caption
+MEDIA-001,DEMO-STR-001,8K_FRAME,DEMO_POLE_1_context.jpg,asset-mapping-poc/demo-utility/8k_DEMO_1/DEMO_POLE_1_context.jpg,,,,,8K Frame Export,8K structure 001 context view
+MEDIA-002,DEMO-STR-001,8K_FRAME,DEMO_POLE_1_crossarm.jpg,asset-mapping-poc/demo-utility/8k_DEMO_1/DEMO_POLE_1_crossarm.jpg,,,,,8K Frame Export,8K structure 001 crossarm view
+MEDIA-003,DEMO-STR-001,8K_FRAME,DEMO_POLE_1_insulator.jpg,asset-mapping-poc/demo-utility/8k_DEMO_1/DEMO_POLE_1_insulator.jpg,,,,,8K Frame Export,8K structure 001 insulator view
+MEDIA-004,DEMO-STR-001,8K_FRAME,DEMO_POLE_1_topofpole.jpg,asset-mapping-poc/demo-utility/8k_DEMO_1/DEMO_POLE_1_topofpole.jpg,,,,,8K Frame Export,8K structure 001 pole top view
+MEDIA-005,DEMO-STR-002,8K_FRAME,DEMO_POLE_2_condcutorclamp.jpg,asset-mapping-poc/demo-utility/8k_DEMO_2/DEMO_POLE_2_condcutorclamp.jpg,,,,,8K Frame Export,8K structure 002 conductor clamp view
+MEDIA-006,DEMO-STR-002,8K_FRAME,DEMO_POLE_2_conductorclamp2.jpg,asset-mapping-poc/demo-utility/8k_DEMO_2/DEMO_POLE_2_conductorclamp2.jpg,,,,,8K Frame Export,8K structure 002 conductor clamp 2 view
+MEDIA-007,DEMO-STR-002,8K_FRAME,DEMO_POLE_2_context.jpg,asset-mapping-poc/demo-utility/8k_DEMO_2/DEMO_POLE_2_context.jpg,,,,,8K Frame Export,8K structure 002 context view
+MEDIA-008,DEMO-STR-002,8K_FRAME,DEMO_POLE_2_crossarm.jpg,asset-mapping-poc/demo-utility/8k_DEMO_2/DEMO_POLE_2_crossarm.jpg,,,,,8K Frame Export,8K structure 002 crossarm view
+MEDIA-009,DEMO-STR-002,8K_FRAME,DEMO_POLE_2_crossarm2.jpg,asset-mapping-poc/demo-utility/8k_DEMO_2/DEMO_POLE_2_crossarm2.jpg,,,,,8K Frame Export,8K structure 002 crossarm 2 view
+MEDIA-010,DEMO-STR-002,8K_FRAME,DEMO_POLE_2_insulator.jpg,asset-mapping-poc/demo-utility/8k_DEMO_2/DEMO_POLE_2_insulator.jpg,,,,,8K Frame Export,8K structure 002 insulator view
+MEDIA-011,DEMO-STR-002,8K_FRAME,DEMO_POLE_2_insulator2.jpg,asset-mapping-poc/demo-utility/8k_DEMO_2/DEMO_POLE_2_insulator2.jpg,,,,,8K Frame Export,8K structure 002 insulator 2 view
+MEDIA-012,DEMO-STR-002,8K_FRAME,DEMO_POLE_2_poletop.jpg,asset-mapping-poc/demo-utility/8k_DEMO_2/DEMO_POLE_2_poletop.jpg,,,,,8K Frame Export,8K structure 002 pole top view
+MEDIA-013,DEMO-STR-002,8K_FRAME,DEMO_POLE_2_skywire.jpg,asset-mapping-poc/demo-utility/8k_DEMO_2/DEMO_POLE_2_skywire.jpg,,,,,8K Frame Export,8K structure 002 skywire / ground wire view
+MEDIA-014,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_conductorclamp.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_conductorclamp.jpg,,,,,8K Frame Export,8K structure 003 conductor clamp view
+MEDIA-015,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_conductorclamp2.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_conductorclamp2.jpg,,,,,8K Frame Export,8K structure 003 conductor clamp 2 view
+MEDIA-016,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_context.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_context.jpg,,,,,8K Frame Export,8K structure 003 context view
+MEDIA-017,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_context2.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_context2.jpg,,,,,8K Frame Export,8K structure 003 context 2 view
+MEDIA-018,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_context3.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_context3.jpg,,,,,8K Frame Export,8K structure 003 context 3 view
+MEDIA-019,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_crossarm.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_crossarm.jpg,,,,,8K Frame Export,8K structure 003 crossarm view
+MEDIA-020,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_insulator.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_insulator.jpg,,,,,8K Frame Export,8K structure 003 insulator view
+MEDIA-021,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_insulator2.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_insulator2.jpg,,,,,8K Frame Export,8K structure 003 insulator 2 view
+MEDIA-022,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_ionsulator3.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_ionsulator3.jpg,,,,,8K Frame Export,8K structure 003 insulator 3 view
+MEDIA-023,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_poletop.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_poletop.jpg,,,,,8K Frame Export,8K structure 003 pole top view
+MEDIA-024,DEMO-STR-003,8K_FRAME,DEMO_POLE_3_skywire.jpg,asset-mapping-poc/demo-utility/8k_DEMO_3/DEMO_POLE_3_skywire.jpg,,,,,8K Frame Export,8K structure 003 skywire / ground wire view
+MEDIA-025,DEMO-STR-004,8K_FRAME,DEMO_POLE_4_context.jpg,asset-mapping-poc/demo-utility/8k_DEMO_4/DEMO_POLE_4_context.jpg,,,,,8K Frame Export,8K structure 004 context view
+MEDIA-026,DEMO-STR-004,8K_FRAME,DEMO_POLE_4_crossarm.jpg,asset-mapping-poc/demo-utility/8k_DEMO_4/DEMO_POLE_4_crossarm.jpg,,,,,8K Frame Export,8K structure 004 crossarm view
+MEDIA-027,DEMO-STR-004,8K_FRAME,DEMO_POLE_4_crossarm2.jpg,asset-mapping-poc/demo-utility/8k_DEMO_4/DEMO_POLE_4_crossarm2.jpg,,,,,8K Frame Export,8K structure 004 crossarm 2 view
+MEDIA-028,DEMO-STR-004,8K_FRAME,DEMO_POLE_4_insualtor.jpg,asset-mapping-poc/demo-utility/8k_DEMO_4/DEMO_POLE_4_insualtor.jpg,,,,,8K Frame Export,8K structure 004 insulator view
+MEDIA-029,DEMO-STR-004,8K_FRAME,DEMO_POLE_4_pole_top.jpg,asset-mapping-poc/demo-utility/8k_DEMO_4/DEMO_POLE_4_pole_top.jpg,,,,,8K Frame Export,8K structure 004 pole top view
+MEDIA-030,DEMO-STR-005,8K_FRAME,A036_C001_11225L_001.R3D.0042445.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/A036_C001_11225L_001.R3D.0042445.jpg,,,0042445,,8K Frame Export,8K structure 005 R3D frame 0042445 view
+MEDIA-031,DEMO-STR-005,8K_FRAME,A036_C001_11225L_001.R3D.0042801.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/A036_C001_11225L_001.R3D.0042801.jpg,,,0042801,,8K Frame Export,8K structure 005 R3D frame 0042801 view
+MEDIA-032,DEMO-STR-005,8K_FRAME,A036_C001_11225L_001.R3D.0042941.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/A036_C001_11225L_001.R3D.0042941.jpg,,,0042941,,8K Frame Export,8K structure 005 R3D frame 0042941 view
+MEDIA-033,DEMO-STR-005,8K_FRAME,A036_C001_11225L_001.R3D.0043235.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/A036_C001_11225L_001.R3D.0043235.jpg,,,0043235,,8K Frame Export,8K structure 005 R3D frame 0043235 view
+MEDIA-034,DEMO-STR-005,8K_FRAME,A036_C001_11225L_001.R3D.0043273.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/A036_C001_11225L_001.R3D.0043273.jpg,,,0043273,,8K Frame Export,8K structure 005 R3D frame 0043273 view
+MEDIA-035,DEMO-STR-005,8K_FRAME,A036_C001_11225L_001.R3D.0043327.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/A036_C001_11225L_001.R3D.0043327.jpg,,,0043327,,8K Frame Export,8K structure 005 R3D frame 0043327 view
+MEDIA-036,DEMO-STR-005,8K_FRAME,A036_C001_11225L_001.R3D.0043450.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/A036_C001_11225L_001.R3D.0043450.jpg,,,0043450,,8K Frame Export,8K structure 005 R3D frame 0043450 view
+MEDIA-037,DEMO-STR-005,8K_FRAME,A036_C001_11225L_001.R3D.0043589.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/A036_C001_11225L_001.R3D.0043589.jpg,,,0043589,,8K Frame Export,8K structure 005 R3D frame 0043589 view
+MEDIA-038,DEMO-STR-005,8K_FRAME,A036_C001_11225L_001.R3D.0043621.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/A036_C001_11225L_001.R3D.0043621.jpg,,,0043621,,8K Frame Export,8K structure 005 R3D frame 0043621 view
+MEDIA-039,DEMO-STR-005,8K_FRAME,A036_C001_11225L_001.R3D.0043865.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/A036_C001_11225L_001.R3D.0043865.jpg,,,0043865,,8K Frame Export,8K structure 005 R3D frame 0043865 view
+MEDIA-040,DEMO-STR-005,8K_FRAME,DEMO_POLE_5_context.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/DEMO_POLE_5_context.jpg,,,,,8K Frame Export,8K structure 005 context view
+MEDIA-041,DEMO-STR-005,8K_FRAME,DEMO_POLE_5_insulator.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/DEMO_POLE_5_insulator.jpg,,,,,8K Frame Export,8K structure 005 insulator view
+MEDIA-042,DEMO-STR-005,8K_FRAME,DEMO_POLE_5_poletop.jpg,asset-mapping-poc/demo-utility/8k_DEMO_5/DEMO_POLE_5_poletop.jpg,,,,,8K Frame Export,8K structure 005 pole top view
+MEDIA-043,DEMO-POLE-001,PHOTO,ALLEY_DEMO_1_context.jpeg,asset-mapping-poc/demo-utility/Alley_DEMO_1/ALLEY_DEMO_1_context.jpeg,,,,,Phone Photo,Alley pole 001 context photo
+MEDIA-044,DEMO-POLE-001,PHOTO,ALLEY_DEMO_1_insulator.jpeg,asset-mapping-poc/demo-utility/Alley_DEMO_1/ALLEY_DEMO_1_insulator.jpeg,,,,,Phone Photo,Alley pole 001 insulator photo
+MEDIA-045,DEMO-POLE-001,TAG_PHOTO,ALLE_DEMO_1_poletag.jpeg,asset-mapping-poc/demo-utility/Alley_DEMO_1/ALLE_DEMO_1_poletag.jpeg,,,,,Phone Photo,Alley pole 001 pole tag photo
+MEDIA-046,DEMO-POLE-002,PHOTO,ALLEY_DEMO_2_context.jpeg,asset-mapping-poc/demo-utility/Alley_DEMO_2/ALLEY_DEMO_2_context.jpeg,,,,,Phone Photo,Alley pole 002 context photo
+MEDIA-047,DEMO-POLE-002,TAG_PHOTO,ALLEY_DEMO_2_poletag.jpeg,asset-mapping-poc/demo-utility/Alley_DEMO_2/ALLEY_DEMO_2_poletag.jpeg,,,,,Phone Photo,Alley pole 002 pole tag photo
+MEDIA-048,DEMO-POLE-002,PHOTO,ALLEY_DEMO_2_transformer.jpeg,asset-mapping-poc/demo-utility/Alley_DEMO_2/ALLEY_DEMO_2_transformer.jpeg,,,,,Phone Photo,Alley pole 002 transformer photo

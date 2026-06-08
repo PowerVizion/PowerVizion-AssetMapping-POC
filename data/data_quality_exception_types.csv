@@ -1,0 +1,16 @@
+exception_type,description,default_severity
+Missing nameplate data,Required nameplate information is missing or not visible,Medium
+Missing install year,Install year is missing from available records,Medium
+Missing manufacturer,Manufacturer is missing from available records,Medium
+Missing model,Model is missing from available records,Medium
+Missing serial number,Serial number is missing from available records,Medium
+Asset visible but not in source record,Field evidence shows asset/component not present in source record,High
+Source record not observed in field,Source record exists but asset/component was not observed,High
+Location discrepancy,Asset location appears offset or incorrect,Medium
+Duplicate suspected,Possible duplicate or superfluous record,Medium
+Equipment no longer exists,Record may represent removed equipment,High
+QR/barcode/RFID tag missing,Physical identification tag is missing or not observed,Low
+Component type uncertain,Reviewer cannot confidently determine component type,Low
+Requires client review,Client review is required before export/update,Medium
+Needs follow-up inspection,Additional field evidence is required,Medium
+Not enough visual evidence,Media is insufficient to confirm asset/component data,Low

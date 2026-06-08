@@ -1,0 +1,7 @@
+node_modules/
+.npm-cache/
+dist/
+.env
+data/*.sqlite
+data/*.sqlite-*
+npm-debug.log*

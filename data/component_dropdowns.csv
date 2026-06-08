@@ -1,0 +1,38 @@
+field_name,option_value,sort_order
+component_type,Pole,1
+component_type,Transformer,2
+component_type,Insulator,3
+component_type,Crossarm,4
+component_type,Cutout / Fuse,5
+component_type,Arrester,6
+component_type,Guy Wire,7
+component_type,Conductor Attachment,8
+component_type,Streetlight,9
+component_type,Telecom Attachment,10
+component_type,Ground Wire,11
+component_type,Structure Arm,12
+component_type,Hardware Assembly,13
+component_type,Other,14
+phase,A,1
+phase,B,2
+phase,C,3
+phase,Neutral,4
+phase,Ground,5
+phase,Multi-phase,6
+phase,Unknown,7
+phase,Not Applicable,8
+condition_rating,Good,1
+condition_rating,Monitor,2
+condition_rating,Repair Required,3
+condition_rating,Critical,4
+condition_rating,Unknown,5
+condition_rating,Not Applicable,6
+verified_status,AI Candidate,1
+verified_status,Human Verified,2
+verified_status,Rejected,3
+verified_status,Needs Client Review,4
+verified_status,Export Ready,5
+nameplate_visible,Yes,1
+nameplate_visible,No,2
+nameplate_visible,Partially,3
+nameplate_visible,Not Applicable,4

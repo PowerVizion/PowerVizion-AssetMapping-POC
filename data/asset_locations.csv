@@ -1,0 +1,8 @@
+asset_location_id,project_id,client_name,asset_location_type,display_name,client_asset_tag,structure_or_pole_number,feeder,circuit,latitude,longitude,source_system,source_record_id,review_status,notes
+DEMO-STR-001,POC-001,Demo Utility,Transmission Structure,8K Demo Structure 001,,STR-001,,," 54�45'33.12""N","114�29'26.82""W",8K Demo,8k_DEMO_1,Pending Review,Existing 8K structure frame review
+DEMO-STR-002,POC-001,Demo Utility,Transmission Structure,8K Demo Structure 002,,STR-002,,," 54�45'39.48""N","114�29'25.11""W",8K Demo,8k_DEMO_2,Pending Review,Existing 8K structure frame review
+DEMO-STR-003,POC-001,Demo Utility,Transmission Structure,8K Demo Structure 003,,STR-003,,," 54�45'46.00""N","114�29'23.36""W",8K Demo,8k_DEMO_3,Pending Review,Existing 8K structure frame review
+DEMO-STR-004,POC-001,Demo Utility,Transmission Structure,8K Demo Structure 004,,STR-004,,," 54�45'52.87""N","114�29'21.52""W",8K Demo,8k_DEMO_4,Pending Review,Existing 8K structure frame review
+DEMO-STR-005,POC-001,Demo Utility,Transmission Structure,8K Demo Structure 005,,STR-005,,," 54�45'58.88""N","114�29'19.90""W",8K Demo,8k_DEMO_5,Pending Review,Existing 8K structure frame review
+DEMO-POLE-001,POC-001,Demo Utility,Distribution Pole,Alley Demo Pole 001,,POLE-001,Demo Feeder,," 53�28'31.38""N","113�32'48.81""W",Field Photo,Alley_DEMO_1,Pending Review,Ground-level distribution example
+DEMO-POLE-002,POC-001,Demo Utility,Distribution Pole,Alley Demo Pole 002,,POLE-002,Demo Feeder,," 53�28'31.38""N","113�32'47.29""W",Field Photo,Alley_DEMO_2,Pending Review,Ground-level distribution example
