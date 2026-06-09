@@ -107,6 +107,20 @@ function detectionStatus(status) {
   return map[status] || status || 'AI Candidate';
 }
 
+function parseCoordinate(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const text = String(value).trim();
+  const direction = (text.match(/[NSEW]/i)?.[0] || '').toUpperCase();
+  const numbers = text.match(/-?\d+(?:\.\d+)?/g)?.map(Number) || [];
+  if (!numbers.length) return null;
+  let decimal = Math.abs(numbers[0]);
+  if (numbers.length > 1) decimal += Math.abs(numbers[1]) / 60;
+  if (numbers.length > 2) decimal += Math.abs(numbers[2]) / 3600;
+  const isNegative = numbers[0] < 0 || direction === 'S' || direction === 'W';
+  return Number((isNegative ? -decimal : decimal).toFixed(7));
+}
+
 async function ingest() {
   console.log(`Starting ${mode} ingest...`);
   const files = {};
@@ -146,8 +160,8 @@ async function ingest() {
         asset.asset_location_type || asset.asset_type,
         asset.structure_or_pole_number || asset.structure_number || asset.display_name,
         asset.client_asset_tag || '',
-        Number.parseFloat(asset.latitude) || null,
-        Number.parseFloat(asset.longitude) || null,
+        parseCoordinate(asset.latitude),
+        parseCoordinate(asset.longitude),
         asset.review_status || 'Imported',
         asset.notes || ''
       );
