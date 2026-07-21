@@ -87,6 +87,26 @@ CREATE TABLE IF NOT EXISTS data_quality_exceptions (
   FOREIGN KEY(component_id) REFERENCES components(id)
 );
 
+CREATE TABLE IF NOT EXISTS media_annotations (
+  annotation_id TEXT PRIMARY KEY,
+  asset_location_id TEXT NOT NULL,
+  media_id TEXT NOT NULL,
+  candidate_id TEXT,
+  shape_type TEXT DEFAULT 'circle',
+  center_x REAL NOT NULL,
+  center_y REAL NOT NULL,
+  radius REAL NOT NULL,
+  label TEXT,
+  severity TEXT,
+  review_status TEXT,
+  note TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(asset_location_id) REFERENCES asset_locations(id),
+  FOREIGN KEY(media_id) REFERENCES asset_media(id),
+  FOREIGN KEY(candidate_id) REFERENCES ai_detections(id)
+);
+
 CREATE TABLE IF NOT EXISTS review_events (
   id TEXT PRIMARY KEY,
   asset_location_id TEXT NOT NULL,

@@ -68,6 +68,7 @@ function json(text, name) {
 function reset(db) {
   db.exec(`
     DELETE FROM review_events;
+    DELETE FROM media_annotations;
     DELETE FROM data_quality_exceptions;
     DELETE FROM components;
     DELETE FROM ai_detections;

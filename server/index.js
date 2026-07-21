@@ -19,7 +19,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://127.0.0.1:5173');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
@@ -86,7 +86,8 @@ app.get('/api/assets/:id', async (req, res) => {
   const detections = all('SELECT * FROM ai_detections WHERE asset_location_id = ? ORDER BY confidence DESC', [asset.id]);
   const components = all('SELECT * FROM components WHERE asset_location_id = ? ORDER BY created_at DESC', [asset.id]);
   const exceptions = all('SELECT * FROM data_quality_exceptions WHERE asset_location_id = ? ORDER BY created_at DESC', [asset.id]);
-  res.json({ asset: withCounts(asset), media, detections, components, exceptions });
+  const annotations = all('SELECT * FROM media_annotations WHERE asset_location_id = ? ORDER BY updated_at DESC', [asset.id]);
+  res.json({ asset: withCounts(asset), media, detections, components, exceptions, annotations });
 });
 
 app.patch('/api/assets/:id/status', (req, res) => {
@@ -147,6 +148,52 @@ app.post('/api/exceptions', (req, res) => {
   res.status(201).json(get('SELECT * FROM data_quality_exceptions WHERE id = ?', [exception.id]));
 });
 
+function annotationPayload(body, annotationId = id('ann')) {
+  return {
+    annotation_id: annotationId,
+    asset_location_id: body.asset_location_id,
+    media_id: body.media_id,
+    candidate_id: body.candidate_id || null,
+    shape_type: body.shape_type || 'circle',
+    center_x: Number(body.center_x),
+    center_y: Number(body.center_y),
+    radius: Number(body.radius),
+    label: body.label || 'Circled visual evidence',
+    severity: body.severity || 'Needs Review',
+    review_status: body.review_status || 'Candidate Finding',
+    note: body.note || ''
+  };
+}
+
+app.post('/api/annotations', (req, res) => {
+  const annotation = annotationPayload(req.body);
+  if (!annotation.asset_location_id || !annotation.media_id || !Number.isFinite(annotation.center_x) || !Number.isFinite(annotation.center_y) || !Number.isFinite(annotation.radius)) {
+    return res.status(400).json({ error: 'Annotation requires asset, media, center, and radius.' });
+  }
+  run(`INSERT INTO media_annotations (
+    annotation_id, asset_location_id, media_id, candidate_id, shape_type, center_x, center_y, radius,
+    label, severity, review_status, note
+  ) VALUES (
+    @annotation_id, @asset_location_id, @media_id, @candidate_id, @shape_type, @center_x, @center_y, @radius,
+    @label, @severity, @review_status, @note
+  )`, annotation);
+  res.status(201).json(get('SELECT * FROM media_annotations WHERE annotation_id = ?', [annotation.annotation_id]));
+});
+
+app.put('/api/annotations/:id', (req, res) => {
+  const annotation = annotationPayload(req.body, req.params.id);
+  run(`UPDATE media_annotations SET
+    candidate_id=@candidate_id, shape_type=@shape_type, center_x=@center_x, center_y=@center_y, radius=@radius,
+    label=@label, severity=@severity, review_status=@review_status, note=@note, updated_at=CURRENT_TIMESTAMP
+    WHERE annotation_id=@annotation_id`, annotation);
+  res.json(get('SELECT * FROM media_annotations WHERE annotation_id = ?', [req.params.id]));
+});
+
+app.delete('/api/annotations/:id', (req, res) => {
+  run('DELETE FROM media_annotations WHERE annotation_id = ?', [req.params.id]);
+  res.json({ ok: true });
+});
+
 app.get('/api/client/assets/:id', async (req, res) => {
   const asset = get('SELECT * FROM asset_locations WHERE id = ?', [req.params.id]);
   if (!asset) return res.status(404).json({ error: 'Asset not found' });
@@ -154,7 +201,8 @@ app.get('/api/client/assets/:id', async (req, res) => {
   const media = await Promise.all(mediaRows.map(async row => ({ ...row, url: await mediaUrl(row) })));
   const components = all("SELECT * FROM components WHERE asset_location_id = ? AND verified_status != 'Rejected'", [asset.id]);
   const exceptions = all('SELECT * FROM data_quality_exceptions WHERE asset_location_id = ?', [asset.id]);
-  res.json({ asset, media, components, exceptions });
+  const annotations = all('SELECT * FROM media_annotations WHERE asset_location_id = ? ORDER BY updated_at DESC', [asset.id]);
+  res.json({ asset, media, components, exceptions, annotations });
 });
 
 app.get('/api/export/data-quality-register.csv', (req, res) => {
@@ -199,10 +247,15 @@ app.get('/api/export/data-quality-register.csv', (req, res) => {
 app.get('/api/export/preview', (req, res) => {
   const rows = all(`
     SELECT a.id AS asset_location_id, a.asset_type, a.structure_number, c.component_type, c.verified_status,
-      e.exception_type, e.recommended_action, a.review_status
+      e.exception_type, e.recommended_action, a.review_status,
+      COUNT(DISTINCT ma.annotation_id) AS annotation_count,
+      GROUP_CONCAT(DISTINCT ma.label) AS annotation_labels
     FROM asset_locations a
     LEFT JOIN components c ON c.asset_location_id = a.id
     LEFT JOIN data_quality_exceptions e ON e.asset_location_id = a.id
+    LEFT JOIN media_annotations ma ON ma.asset_location_id = a.id
+    GROUP BY a.id, a.asset_type, a.structure_number, c.component_type, c.verified_status,
+      e.exception_type, e.recommended_action, a.review_status
     ORDER BY a.id
     LIMIT 50
   `);

@@ -23,6 +23,10 @@ button, .download {
   text-decoration: none;
 }
 button:hover, .download:hover { border-color: #32d6bd; color: #ffffff; }
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
 button:focus-visible, .download:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 2px solid #38d6bd;
   outline-offset: 2px;
@@ -675,8 +679,15 @@ nav button.active { background: #153139; border-color: #2c6871; color: #ffffff; 
 
 .mediaControls { align-items: center; display: flex; gap: 8px; }
 .mediaControls button { height: 34px; min-height: 34px; padding: 6px 9px; width: 36px; }
-.imageShell { align-items: center; background: #050708; border: 1px solid #1d343a; border-radius: 8px; display: flex; height: 470px; justify-content: center; overflow: hidden; }
-.imageShell img { height: 100%; object-fit: contain; transition: transform 0.12s ease; user-select: none; width: 100%; }
+.imageShell { align-items: center; background: #050708; border: 1px solid #1d343a; border-radius: 8px; display: flex; height: 470px; justify-content: center; overflow: hidden; position: relative; }
+.mediaTransformLayer {
+  height: 100%;
+  position: relative;
+  transform-origin: center center;
+  transition: transform 0.12s ease;
+  width: 100%;
+}
+.mediaTransformLayer img { height: 100%; object-fit: contain; user-select: none; width: 100%; }
 .zoomedImageShell {
   cursor: grab;
   position: relative;
@@ -695,6 +706,128 @@ nav button.active { background: #153139; border-color: #2c6871; color: #ffffff; 
   padding: 5px 8px;
   position: absolute;
   right: 12px;
+}
+.annotationToolbar {
+  background: #081013;
+  border: 1px solid #203940;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+}
+.annotationToolbar button {
+  min-height: 34px;
+  padding: 6px 10px;
+}
+.annotationToolbar .activeTool {
+  background: #17343b;
+  border-color: #38d6bd;
+  color: #ffffff;
+}
+.annotationOverlay {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+}
+.drawingOverlay {
+  cursor: crosshair;
+}
+.annotationCircle {
+  background: rgba(56, 214, 189, 0.06);
+  border: 3px solid #38d6bd;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(5, 10, 12, 0.85), 0 0 24px rgba(56, 214, 189, 0.22);
+  cursor: pointer;
+  min-height: 0;
+  padding: 0;
+  pointer-events: auto;
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+.draftAnnotation {
+  background: rgba(255, 209, 90, 0.08);
+  border-color: #ffd15a;
+  border-style: dashed;
+}
+.selectedAnnotation {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(56, 214, 189, 0.45), 0 0 34px rgba(56, 214, 189, 0.38);
+}
+.annotationCircle span {
+  background: rgba(8, 16, 19, 0.94);
+  border: 1px solid #244047;
+  border-radius: 999px;
+  color: #e5edf2;
+  font-size: 12px;
+  font-weight: 800;
+  left: 50%;
+  max-width: 180px;
+  overflow: hidden;
+  padding: 4px 8px;
+  position: absolute;
+  text-overflow: ellipsis;
+  top: -32px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.annotationEditor {
+  background: #0a1114;
+  border: 1px solid #1e343a;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px;
+}
+.annotationForm {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.annotationList {
+  display: grid;
+  gap: 8px;
+}
+.annotationList h3 {
+  font-size: 14px;
+  margin: 0;
+}
+.annotationList button,
+.readOnlyAnnotationRow {
+  background: #0f171a;
+  border: 1px solid #203940;
+  border-radius: 8px;
+  color: #e5edf2;
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  padding: 10px;
+  text-align: left;
+}
+.annotationList button strong,
+.readOnlyAnnotationRow strong {
+  color: #ffffff;
+  font-size: 13px;
+}
+.annotationList button span,
+.annotationList button small,
+.readOnlyAnnotationRow span {
+  color: #9db8be;
+  font-size: 12px;
+}
+.selectedAnnotationRow {
+  border-color: #38d6bd !important;
+  background: #10242a !important;
+}
+.readOnlyAnnotationList {
+  background: #0a1114;
+  border: 1px solid #1e343a;
+  border-radius: 8px;
+  margin-top: 12px;
+  padding: 12px;
 }
 .mediaMeta { color: #9db8be; display: grid; gap: 5px; margin-top: 12px; }
 .mediaMeta strong { color: #ffffff; }

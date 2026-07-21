@@ -704,18 +704,49 @@ function AssetList({ assets, selectedId, setSelectedId }) {
   );
 }
 
-function MediaViewer({ detail, mediaIndex, setMediaIndex }) {
+const emptyAnnotationForm = {
+  label: 'Damaged component',
+  severity: 'Needs Review',
+  review_status: 'Candidate Finding',
+  note: '',
+  candidate_id: ''
+};
+
+function MediaViewer({
+  detail,
+  mediaIndex,
+  setMediaIndex,
+  annotatable = false,
+  annotations = [],
+  detections = [],
+  assetId = '',
+  onAnnotationsChanged,
+  readOnlyAnnotations = false
+}) {
   const media = detail?.media || [];
   const current = media[mediaIndex] || media[0];
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState(null);
+  const [annotationMode, setAnnotationMode] = useState('select');
+  const [draftCircle, setDraftCircle] = useState(null);
+  const [drawStart, setDrawStart] = useState(null);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState('');
+  const [annotationForm, setAnnotationForm] = useState(emptyAnnotationForm);
   useEffect(() => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setDragStart(null);
+    setAnnotationMode('select');
+    setDraftCircle(null);
+    setDrawStart(null);
+    setSelectedAnnotationId('');
+    setAnnotationForm(emptyAnnotationForm);
   }, [current?.id]);
   if (!current) return <section className="panel mediaViewer">No linked media</section>;
+  const currentAnnotations = annotations.filter(annotation => annotation.media_id === current.id);
+  const selectedAnnotation = currentAnnotations.find(annotation => annotation.annotation_id === selectedAnnotationId);
+  const candidateOptions = detections.filter(detection => detection.media_id === current.id);
   const next = () => setMediaIndex((mediaIndex + 1) % media.length);
   const previous = () => setMediaIndex((mediaIndex - 1 + media.length) % media.length);
   const resetZoom = () => {
@@ -730,6 +761,112 @@ function MediaViewer({ detail, mediaIndex, setMediaIndex }) {
       return nextZoom;
     });
   };
+  const pointFromEvent = event => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
+      rect
+    };
+  };
+  const startCircle = event => {
+    if (!annotatable || readOnlyAnnotations || annotationMode !== 'circle') return;
+    event.preventDefault();
+    resetZoom();
+    const point = pointFromEvent(event);
+    setDrawStart(point);
+    setSelectedAnnotationId('');
+    setDraftCircle({
+      center_x: point.x,
+      center_y: point.y,
+      radius: 0.01
+    });
+  };
+  const updateCircle = event => {
+    if (!drawStart || annotationMode !== 'circle') return;
+    const point = pointFromEvent(event);
+    const dx = point.x - drawStart.x;
+    const dy = point.y - drawStart.y;
+    const radius = Math.max(0.01, Math.min(0.5, Math.sqrt(dx * dx + dy * dy)));
+    setDraftCircle({ center_x: drawStart.x, center_y: drawStart.y, radius });
+  };
+  const finishCircle = () => {
+    if (!drawStart) return;
+    setDrawStart(null);
+    setAnnotationMode('select');
+    setAnnotationForm(emptyAnnotationForm);
+  };
+  const selectAnnotation = annotation => {
+    setDraftCircle(null);
+    setSelectedAnnotationId(annotation.annotation_id);
+    setAnnotationForm({
+      label: annotation.label || 'Damaged component',
+      severity: annotation.severity || 'Needs Review',
+      review_status: annotation.review_status || 'Candidate Finding',
+      note: annotation.note || '',
+      candidate_id: annotation.candidate_id || ''
+    });
+  };
+  const clearDraft = () => {
+    setDraftCircle(null);
+    setDrawStart(null);
+    setSelectedAnnotationId('');
+    setAnnotationForm(emptyAnnotationForm);
+  };
+  const saveAnnotation = async () => {
+    const shape = draftCircle || selectedAnnotation;
+    if (!shape || readOnlyAnnotations) return;
+    const payload = {
+      asset_location_id: assetId || detail?.asset?.id,
+      media_id: current.id,
+      candidate_id: annotationForm.candidate_id || null,
+      shape_type: 'circle',
+      center_x: shape.center_x,
+      center_y: shape.center_y,
+      radius: shape.radius,
+      label: annotationForm.label,
+      severity: annotationForm.severity,
+      review_status: annotationForm.review_status,
+      note: annotationForm.note
+    };
+    if (selectedAnnotation) {
+      await api(`/annotations/${selectedAnnotation.annotation_id}`, { method: 'PUT', body: payload });
+    } else {
+      await api('/annotations', { method: 'POST', body: payload });
+    }
+    clearDraft();
+    await onAnnotationsChanged?.();
+  };
+  const deleteSelectedAnnotation = async () => {
+    if (!selectedAnnotation || readOnlyAnnotations) return;
+    await api(`/annotations/${selectedAnnotation.annotation_id}`, { method: 'DELETE' });
+    clearDraft();
+    await onAnnotationsChanged?.();
+  };
+  const renderCircle = (annotation, isDraft = false) => {
+    const isSelected = !isDraft && annotation.annotation_id === selectedAnnotationId;
+    const diameter = annotation.radius * 200;
+    return (
+      <button
+        type="button"
+        key={isDraft ? 'draft-circle' : annotation.annotation_id}
+        className={isDraft ? 'annotationCircle draftAnnotation' : isSelected ? 'annotationCircle selectedAnnotation' : 'annotationCircle'}
+        style={{
+          left: `${annotation.center_x * 100}%`,
+          top: `${annotation.center_y * 100}%`,
+          width: `${diameter}%`,
+          height: `${diameter}%`
+        }}
+        onClick={event => {
+          event.stopPropagation();
+          if (!isDraft) selectAnnotation(annotation);
+        }}
+        aria-label={isDraft ? 'Draft circle annotation' : `Select annotation ${annotation.label}`}
+      >
+        {(isDraft || isSelected) && <span>{isDraft ? 'Draft' : annotation.label}</span>}
+      </button>
+    );
+  };
   return (
     <section className="panel mediaViewer">
       <div className="panelHead">
@@ -743,25 +880,90 @@ function MediaViewer({ detail, mediaIndex, setMediaIndex }) {
           <Badge value={current.capture_method} />
         </div>
       </div>
+      {annotatable && (
+        <div className="annotationToolbar">
+          <button type="button" className={annotationMode === 'select' ? 'activeTool' : ''} onClick={() => setAnnotationMode('select')}>Select / Review Mode</button>
+          <button type="button" className={annotationMode === 'circle' ? 'activeTool' : ''} onClick={() => { resetZoom(); setAnnotationMode('circle'); setSelectedAnnotationId(''); }}>Circle Deficiency</button>
+          <button type="button" onClick={clearDraft}>Clear Draft</button>
+          <button type="button" onClick={saveAnnotation} disabled={!draftCircle && !selectedAnnotation}>Save Annotation</button>
+          <button type="button" onClick={deleteSelectedAnnotation} disabled={!selectedAnnotation}>Delete Annotation</button>
+        </div>
+      )}
       <div
         className={zoom > 1 ? 'imageShell zoomedImageShell' : 'imageShell'}
         onMouseDown={event => {
+          if (annotatable && annotationMode === 'circle') {
+            startCircle(event);
+            return;
+          }
           if (zoom <= 1) return;
           setDragStart({ mouseX: event.clientX, mouseY: event.clientY, panX: pan.x, panY: pan.y });
         }}
         onMouseMove={event => {
+          if (annotatable && annotationMode === 'circle') {
+            updateCircle(event);
+            return;
+          }
           if (!dragStart) return;
           setPan({
             x: dragStart.panX + event.clientX - dragStart.mouseX,
             y: dragStart.panY + event.clientY - dragStart.mouseY
           });
         }}
-        onMouseUp={() => setDragStart(null)}
-        onMouseLeave={() => setDragStart(null)}
+        onMouseUp={() => {
+          finishCircle();
+          setDragStart(null);
+        }}
+        onMouseLeave={() => {
+          finishCircle();
+          setDragStart(null);
+        }}
       >
-        <img src={current.url} alt={current.caption} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }} draggable="false" />
+        <div className="mediaTransformLayer" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
+          <img src={current.url} alt={current.caption} draggable="false" />
+          <div className={annotationMode === 'circle' ? 'annotationOverlay drawingOverlay' : 'annotationOverlay'}>
+            {currentAnnotations.map(annotation => renderCircle(annotation))}
+            {draftCircle && renderCircle(draftCircle, true)}
+          </div>
+        </div>
         <span className="zoomReadout">{Math.round(zoom * 100)}%</span>
       </div>
+      {annotatable && (
+        <div className="annotationEditor">
+          <div className="panelHead">
+            <div><h2>Circle Annotation</h2><p>Store structured visual evidence without modifying the image</p></div>
+            <Badge value={draftCircle ? 'Draft' : selectedAnnotation ? 'Saved Annotation' : 'Review Mode'} />
+          </div>
+          <div className="annotationForm">
+            <Input label="Label" value={annotationForm.label} onChange={value => setAnnotationForm({ ...annotationForm, label: value })} />
+            <Select label="Severity" value={annotationForm.severity} options={['Needs Review', 'Monitor', 'Repair Required', 'Critical', 'Informational']} onChange={value => setAnnotationForm({ ...annotationForm, severity: value })} />
+            <Select label="Review Status" value={annotationForm.review_status} options={['Candidate Finding', 'Field Verified', 'Needs Client Review', 'Rejected', 'Export Ready']} onChange={value => setAnnotationForm({ ...annotationForm, review_status: value })} />
+            <Select label="Link to Candidate Finding" value={annotationForm.candidate_id} options={['', ...candidateOptions.map(detection => detection.id)]} onChange={value => setAnnotationForm({ ...annotationForm, candidate_id: value })} />
+            <label className="wide">Reviewer Note<textarea value={annotationForm.note} onChange={event => setAnnotationForm({ ...annotationForm, note: event.target.value })} /></label>
+          </div>
+          <div className="annotationList">
+            <h3>Saved Annotations for Selected Media</h3>
+            {currentAnnotations.length ? currentAnnotations.map(annotation => (
+              <button key={annotation.annotation_id} type="button" className={annotation.annotation_id === selectedAnnotationId ? 'selectedAnnotationRow' : ''} onClick={() => selectAnnotation(annotation)}>
+                <strong>{annotation.label}</strong>
+                <span>{annotation.severity} | {annotation.review_status}</span>
+                <small>{annotation.note || 'No note'} | {annotation.asset_location_id} | {annotation.media_id}</small>
+              </button>
+            )) : <div className="empty">No saved annotations for this media yet</div>}
+          </div>
+        </div>
+      )}
+      {!annotatable && currentAnnotations.length > 0 && (
+        <div className="annotationList readOnlyAnnotationList">
+          <h3>Visual Evidence Annotations</h3>
+          {currentAnnotations.map(annotation => (
+            <div key={annotation.annotation_id} className="readOnlyAnnotationRow">
+              <strong>{annotation.label}</strong>
+              <span>{annotation.severity} | {annotation.review_status}</span>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="mediaMeta">
         <span>{current.id}</span>
         <strong>{current.file_name}</strong>
@@ -853,7 +1055,16 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
               <InteractiveAssetMap assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} className="reviewLeafletMap" />
             </section>
             <div className="twoCol">
-              <MediaViewer detail={detail} mediaIndex={mediaIndex} setMediaIndex={setMediaIndex} />
+              <MediaViewer
+                detail={detail}
+                mediaIndex={mediaIndex}
+                setMediaIndex={setMediaIndex}
+                annotatable
+                annotations={detail.annotations || []}
+                detections={detail.detections || []}
+                assetId={detail.asset.id}
+                onAnnotationsChanged={reload}
+              />
               <section className="panel">
                 <div className="panelHead"><div><h2>AI / Manual Candidates</h2><p>Approve visible components into structured records</p></div><span>{detail.detections.length}</span></div>
                 <div className="candidateList">
@@ -936,7 +1147,13 @@ function ClientView({ assets, selectedId, setSelectedId, detail }) {
               <InteractiveAssetMap assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} className="reviewLeafletMap" readOnly />
             </section>
             <div className="twoCol">
-              <MediaViewer detail={detail} mediaIndex={mediaIndex} setMediaIndex={setMediaIndex} />
+              <MediaViewer
+                detail={detail}
+                mediaIndex={mediaIndex}
+                setMediaIndex={setMediaIndex}
+                annotations={detail.annotations || []}
+                readOnlyAnnotations
+              />
               <section className="panel">
                 <div className="panelHead"><div><h2>Verified Components</h2><p>Internal candidates and rejected detections are hidden</p></div><Badge value="Read Only" /></div>
                 <CompactTable rows={detail.components} fields={['component_type', 'component_subtype', 'phase', 'condition_rating', 'verified_status']} />
@@ -966,7 +1183,7 @@ function ExportPage({ preview }) {
       </section>
       <section className="panel">
         <div className="panelHead"><div><h2>Register Preview</h2><p>First rows from the export endpoint</p></div><span>{preview.length} rows</span></div>
-        <CompactTable rows={preview} fields={['asset_location_id', 'asset_type', 'structure_number', 'component_type', 'verified_status', 'exception_type', 'review_status']} />
+        <CompactTable rows={preview} fields={['asset_location_id', 'asset_type', 'structure_number', 'component_type', 'verified_status', 'exception_type', 'annotation_count', 'annotation_labels', 'review_status']} />
       </section>
     </main>
   );
