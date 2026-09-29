@@ -66,3 +66,30 @@ See `.env.example` for supported local settings:
 ## Suggested Next Phase
 
 Add image overlays for detections, richer zoom/pan controls, component edit history, user roles, and a packaged deployment target once the client-demo workflow is accepted.
+
+## Terrestrial Dataset Availability
+
+Set `POWERVIZ_TERRESTRIAL_ROOT=C:\MH_SUB\EXPORT` in the ignored local `.env`.
+`GET /api/terrestrial-datasets` reads `data/terrestrial_datasets.json` on each
+request and returns an array of dataset metadata, with a `local` object for
+root, point-cloud, and panorama-directory availability and status.
+
+The metadata's `point_count`, `setup_count`, and `panorama_count` are declared
+values, not measurements. `local.panorama_count` counts regular files directly
+inside the configured panorama directory matching `panorama_pattern`
+(case insensitive, each `#` means one digit). Other files and subdirectories
+are excluded. The count is `null` when the directory cannot be inspected,
+and zero when it is readable but has no matching files.
+`local.panorama_count_matches_expected` compares the observed and declared
+counts, or is `null` when the comparison is unavailable.
+
+An unset root, missing local data, wrong file type, or unreadable local data
+is reported as availability status with HTTP 200. Missing, malformed, or
+invalid dataset configuration produces a JSON error with HTTP 500.
+Dataset file/directory paths must be relative and stay within the configured
+root. Availability checks do not validate E57/JPEG contents or count points.
+This endpoint does not serve terrestrial files, ingest data, read associations,
+or write to SQLite. No ingest step is needed for this integration.
+
+Windows verification: `npm.cmd run build`, then `npm.cmd run dev` and
+`Invoke-RestMethod http://127.0.0.1:4000/api/terrestrial-datasets`.

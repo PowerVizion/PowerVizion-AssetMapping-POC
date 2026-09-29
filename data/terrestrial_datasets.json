@@ -1,0 +1,17 @@
+﻿[
+  {
+    "dataset_id": "MH_SUB_1",
+    "display_name": "Manitoba Hydro Substation Terrestrial Scan",
+    "source_vendor": "Leica Geosystems",
+    "source_type": "terrestrial_lidar",
+    "point_cloud_format": "E57",
+    "point_cloud_file": "MH SUB 1.e57",
+    "point_count": 1259533270,
+    "panorama_directory": "Panoramas",
+    "panorama_count": 57,
+    "panorama_pattern": "WINNIPEG- Setup ###.jpg",
+    "setup_count": 57,
+    "association_status": "manual_pending",
+    "notes": "Unified E57 validated independently. Individual panorama/setup XYZ and orientation metadata are not currently available."
+  }
+]

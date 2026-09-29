@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { readTerrestrialDatasets } from './terrestrial.js';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import dotenv from 'dotenv';
@@ -48,6 +49,19 @@ async function mediaUrl(media) {
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, mode: hasS3 ? 's3' : 'local' });
+});
+
+app.get('/api/terrestrial-datasets', async (req, res) => {
+  try {
+    const datasets = await readTerrestrialDatasets(
+      path.join(root, 'data', 'terrestrial_datasets.json'),
+      process.env.POWERVIZ_TERRESTRIAL_ROOT
+    );
+    res.json(datasets);
+  } catch (error) {
+    console.error('Unable to read terrestrial datasets:', error.message);
+    res.status(500).json({ error: 'Unable to read terrestrial dataset configuration' });
+  }
 });
 
 app.get('/api/summary', (req, res) => {
