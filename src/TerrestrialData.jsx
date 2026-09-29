@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Images, Minus, Plus, RotateCcw } from 'lucide-react';
 import './terrestrial.css';
+import { AssetAssociation, evidenceRequest } from './TerrestrialEvidence.jsx';
 
 const API = 'http://127.0.0.1:4000/api/terrestrial-datasets';
 async function getJson(url, signal) {
@@ -9,30 +10,49 @@ async function getJson(url, signal) {
   return response.json();
 }
 
-export default function TerrestrialData() {
+export default function TerrestrialData({ initialTarget }) {
   const [datasets, setDatasets] = useState(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [associations, setAssociations] = useState(null);
+  const [associationError, setAssociationError] = useState('');
+  const [associationVersion, setAssociationVersion] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setAssociationError('');
+    evidenceRequest('/terrestrial-evidence', { signal: controller.signal }).then(setAssociations).catch(error => {
+      if (error.name !== 'AbortError') { setAssociations(null); setAssociationError(error.message); }
+    });
+    return () => controller.abort();
+  }, [associationVersion]);
   useEffect(() => {
     const controller = new AbortController();
     setError('');
     setDatasets(null);
-    getJson(API, controller.signal).then(setDatasets).catch(error => {
+    getJson(API, controller.signal).then(rows => {
+      setDatasets(rows);
+      if (initialTarget) {
+        const dataset = rows.find(row => row.dataset_id === initialTarget.dataset_id);
+        if (dataset) setSelected(dataset);
+        else setError('The associated dataset is no longer configured.');
+      }
+    }).catch(error => {
       if (error.name !== 'AbortError') setError(error.message);
     });
     return () => controller.abort();
   }, [attempt]);
-  if (selected) return <PanoramaBrowser dataset={selected} onBack={() => setSelected(null)} />;
+  if (selected) return <PanoramaBrowser dataset={selected} initialSetup={initialTarget?.dataset_id === selected.dataset_id ? initialTarget.setup_id : null} onChanged={() => setAssociationVersion(value => value + 1)} onBack={() => { setSelected(null); setAssociationVersion(value => value + 1); }} />;
   return <main className="page terrestrialPage">
-    <section className="intro compact"><div><p className="eyebrow">Terrestrial evidence</p><h1>Terrestrial Data</h1><p>Explore scan datasets and high-resolution panoramas before associating evidence with assets.</p></div><span className="badge neutral">Read Only</span></section>
+    <section className="intro compact"><div><p className="eyebrow">Terrestrial evidence</p><h1>Terrestrial Data</h1><p>Explore scan datasets and high-resolution panoramas before associating evidence with assets.</p></div><span className="badge neutral">Admin Validation</span></section>
+    {associationError && <div role="alert"><p>{associationError}</p><button onClick={() => setAssociationVersion(value => value + 1)}>Refresh Associations</button></div>}
     {error ? <section className="panel" role="alert"><p>{error}</p><button onClick={() => setAttempt(value => value + 1)}>Retry</button></section> : !datasets ? <p role="status">Loading datasets…</p> : datasets.length === 0 ? <div className="empty">No terrestrial datasets configured.</div> : datasets.map(dataset => {
       const local = dataset.local || {};
       const available = local.point_cloud_available && local.panorama_directory_available && local.panorama_count > 0;
       const fields = [
         ['Source', dataset.source_vendor], ['Evidence Type', dataset.source_type === 'terrestrial_lidar' ? 'Terrestrial LiDAR' : dataset.source_type],
         ['Point Cloud', dataset.point_cloud_file], ['Point Count', Number(dataset.point_count) >= 1e9 ? `${(dataset.point_count / 1e9).toFixed(2)}B` : Number(dataset.point_count).toLocaleString()],
-        ['Panoramas', dataset.panorama_count], ['Setups', dataset.setup_count], ['Asset Associations', 0], ['Association Status', 'Pending'],
+        ['Panoramas', dataset.panorama_count], ['Setups', dataset.setup_count], ['Asset Associations', associations === null ? 'Unavailable' : associations.filter(row => row.dataset_id === dataset.dataset_id).length], ['Association Status', associations === null ? 'Unavailable' : associations.some(row => row.dataset_id === dataset.dataset_id) ? 'Manual Verified' : 'Pending'],
         ['Point Cloud Availability', local.point_cloud_available ? 'Available' : 'Missing'],
         ['Panorama Availability', local.panorama_directory_available && local.panorama_count > 0 ? `Available · ${local.panorama_count} local` : 'Missing']
       ];
@@ -40,37 +60,41 @@ export default function TerrestrialData() {
         <div className="terrestrialHeading"><div><p className="eyebrow">{dataset.dataset_id}</p><h2>{dataset.display_name}</h2></div><span className={`badge ${available ? 'good' : 'warn'}`}>Status: {available ? 'Available' : 'Missing'}</span></div>
         <dl className="terrestrialFacts">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? 'Unknown'}</dd></div>)}</dl>
         {local.panorama_count_matches_expected === false && <p role="status">Some expected panoramas are missing. Available images can still be browsed.</p>}
-        <div className="terrestrialFooter"><p>Asset associations are pending. Point and setup counts are dataset metadata.</p><button onClick={() => setSelected(dataset)}><Images size={18} />Browse Panoramas</button></div>
+        <div className="terrestrialFooter"><p>Manual associations are for admin validation. Point and setup counts are dataset metadata.</p><button onClick={() => setSelected(dataset)}><Images size={18} />Browse Panoramas</button></div>
       </section>;
     })}
   </main>;
 }
 
-function PanoramaBrowser({ dataset, onBack }) {
+function PanoramaBrowser({ dataset, initialSetup, onChanged, onBack }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(initialSetup ? Number(initialSetup) - 1 : 0);
   useEffect(() => {
     const controller = new AbortController();
     setError('');
-    getJson(`${API}/${encodeURIComponent(dataset.dataset_id)}/panoramas`, controller.signal).then(setItems).catch(error => {
+    getJson(`${API}/${encodeURIComponent(dataset.dataset_id)}/panoramas`, controller.signal).then(rows => {
+      if (initialSetup && !rows.some(row => String(row.setup_number).padStart(3, '0') === initialSetup)) throw new Error('The associated setup is no longer configured.');
+      setItems(rows);
+    }).catch(error => {
       if (error.name !== 'AbortError') setError(error.message);
     });
     return () => controller.abort();
   }, [dataset.dataset_id, attempt]);
   const current = items?.[index];
   return <main className="page terrestrialPage">
-    <div className="terrestrialHeading"><button onClick={onBack}><ArrowLeft size={16} />Back to Dataset</button><span className="badge neutral">Read Only · Panoramas</span></div>
+    <div className="terrestrialHeading"><button onClick={onBack}><ArrowLeft size={16} />Back to Dataset</button><span className="badge neutral">Admin Validation · Panoramas</span></div>
     <section className="panel terrestrialCard">
       <p className="eyebrow">{dataset.display_name}</p>
       {error ? <div role="alert"><p>{error}</p><button onClick={() => setAttempt(value => value + 1)}>Retry</button></div> : !current ? <p role="status">Loading panoramas…</p> : <>
-        <div className="terrestrialHeading"><div><h1>Setup {String(current.setup_number).padStart(3, '0')}</h1><p className="terrestrialFilename">{current.filename}</p><p>Asset Association: Not Assigned</p></div><span className="badge warn">Association Pending</span></div>
+        <div className="terrestrialHeading"><div><h1>Setup {String(current.setup_number).padStart(3, '0')}</h1><p className="terrestrialFilename">{current.filename}</p></div></div>
         <div className="terrestrialNavigation">
           <button disabled={index === 0} onClick={() => setIndex(value => value - 1)}><ArrowLeft size={16} />Previous</button>
           <label>Setup<select value={index} onChange={event => setIndex(Number(event.target.value))}>{items.map((item, i) => <option key={item.filename} value={i}>Setup {String(item.setup_number).padStart(3, '0')} — {item.filename}</option>)}</select></label>
           <button disabled={index === items.length - 1} onClick={() => setIndex(value => value + 1)}>Next<ArrowRight size={16} /></button>
         </div>
+        <AssetAssociation key={`${dataset.dataset_id}:${current.filename}`} datasetId={dataset.dataset_id} panorama={current} onChanged={onChanged} />
         <PanoramaImage key={current.filename} filename={current.filename} src={`${API}/${encodeURIComponent(dataset.dataset_id)}/panoramas/${encodeURIComponent(current.filename)}`} />
       </>}
     </section>

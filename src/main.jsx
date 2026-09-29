@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, BarChart3, CheckCircle2, Download, Eye, FileWarn
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 import TerrestrialData from './TerrestrialData.jsx';
+import { AdminTerrestrialEvidence } from './TerrestrialEvidence.jsx';
 
 const emptyForm = {
   component_type: 'Transformer',
@@ -58,7 +59,7 @@ function Badge({ value }) {
 }
 
 function Header({ page, setPage }) {
-  const items = ['Dashboard', 'Asset Map', 'Admin Review', 'Client View', 'Export', 'Terrestrial Data'];
+  const items = ['Dashboard', 'Asset Map', 'Admin Review', 'Client View', 'Terrestrial Data', 'Export'];
   return (
     <header className="topbar">
       <div>
@@ -983,7 +984,7 @@ function MediaViewer({
   );
 }
 
-function AdminReview({ assets, selectedId, setSelectedId, detail, reload, options }) {
+function AdminReview({ assets, selectedId, setSelectedId, detail, reload, options, onOpenPanorama }) {
   const [mediaIndex, setMediaIndex] = useState(0);
   const [form, setForm] = useState(emptyForm);
   const [exception, setException] = useState({ exception_type: 'Missing nameplate data', recommended_action: '', reviewer_notes: '' });
@@ -1055,6 +1056,7 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
               </div>
               <InteractiveAssetMap assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} className="reviewLeafletMap" />
             </section>
+            <AdminTerrestrialEvidence key={selectedId} assetId={selectedId} onOpen={onOpenPanorama} />
             <div className="twoCol">
               <MediaViewer
                 detail={detail}
@@ -1212,6 +1214,11 @@ function CompactTable({ rows, fields }) {
 
 function App() {
   const [page, setPage] = useState('Dashboard');
+  const [panoramaTarget, setPanoramaTarget] = useState(null);
+  function openPanorama(row) {
+    setPanoramaTarget({ dataset_id: row.dataset_id, setup_id: row.setup_id });
+    setPage('Terrestrial Data');
+  }
   const [summary, setSummary] = useState({});
   const [assets, setAssets] = useState([]);
   const [options, setOptions] = useState({});
@@ -1245,15 +1252,15 @@ function App() {
   };
 
   const content = useMemo(() => {
-    if (page === 'Terrestrial Data') return <TerrestrialData />;
+    if (page === 'Terrestrial Data') return <TerrestrialData initialTarget={panoramaTarget} />;
     if (page === 'Asset Map') return <AssetMapPage assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} />;
-    if (page === 'Admin Review') return <AdminReview assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} reload={reload} options={options} />;
+    if (page === 'Admin Review') return <AdminReview assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} reload={reload} options={options} onOpenPanorama={openPanorama} />;
     if (page === 'Client View') return <ClientView assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} />;
     if (page === 'Export') return <ExportPage preview={preview} />;
     return <Dashboard summary={summary} assets={assets} setPage={setPage} setSelectedId={setSelectedId} />;
-  }, [page, assets, selectedId, detail, summary, preview, options]);
+  }, [page, assets, selectedId, detail, summary, preview, options, panoramaTarget]);
 
-  return <><Header page={page} setPage={setPage} />{content}</>;
+  return <><Header page={page} setPage={next => { setPanoramaTarget(null); setPage(next); }} />{content}</>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);

@@ -97,7 +97,7 @@ Windows verification: `npm.cmd run build`, then `npm.cmd run dev` and
 ## Terrestrial Data Tab and Panorama Browser
 
 Open **Terrestrial Data** to see dataset metadata, local availability, and
-the pending association state. **Browse Panoramas** opens Setup 001. Use
+the current association state. **Browse Panoramas** opens Setup 001. Use
 Previous/Next or the setup selector to browse the configured setup range.
 Zoom In/Out supports 100–400% of the fitted image; drag when zoomed and
 use Reset Zoom to restore the fitted view. Each setup starts at 100%.
@@ -115,9 +115,52 @@ Read-only routes:
   image symlinks are rejected.
 
 The catalog lists expected setups even if files are missing. Declared counts
-remain separate from observed local panorama counts. Asset association count
-is zero and the status is Pending for this milestone; the header-only
-`data/terrestrial_evidence.csv` is not modified or populated by this UI.
+remain separate from observed local panorama counts. Association counts come from data/terrestrial_evidence.csv. The admin association workflow below maintains this file.
 No SQLite schema, ingestion, annotation or existing review behavior is changed.
 
 Run focused route tests with `node --test server/terrestrial-panoramas.test.js`.
+
+## Manual Terrestrial Evidence Associations
+
+In **Terrestrial Data**, browse a setup and choose an existing asset in
+**Asset Association**, optionally add notes, then select **Associate to Asset**.
+Saved records show **Manual Verified** with Change Association and Remove
+Association controls. Exactly one asset association is supported per dataset/setup.
+Change Association replaces the existing record atomically, without a delete gap.
+
+**Admin Review** includes a separate **Terrestrial Evidence** section with metadata,
+notes, preview and **Open Panorama**, which opens that dataset/setup directly.
+Existing aerial/8K media remains separate. No terrestrial evidence is displayed
+in Client View or added to exports. Export is the final navigation tab.
+
+CSV source of truth: `data/terrestrial_evidence.csv`. Columns remain:
+`asset_location_id,dataset_id,setup_id,panorama_file,association_method,notes`.
+Setup IDs are three-digit strings (`001`–`057` for MH_SUB_1); method is always
+`manual_verified`. Notes are optional text up to 2000 characters. No SQLite
+writes, schema changes, ingestion, or automatic asset associations are performed.
+
+Routes:
+- `GET /api/terrestrial-evidence`: all CSV records.
+- `GET /api/terrestrial-evidence/assets/:assetId`: records for an existing asset.
+- `POST /api/terrestrial-evidence`: create using the six CSV fields.
+- `PUT /api/terrestrial-evidence/:datasetId/:setupId`: replace the asset/notes,
+  supplying the six new fields plus `expected` containing the full previously read record.
+- `DELETE /api/terrestrial-evidence/:datasetId/:setupId`: remove a record,
+  with JSON body `{ "expected": <full previously read record> }`.
+
+Create/change validates the existing asset with a read-only query, dataset,
+setup/filename match, real file containment and JPEG signature. Invalid requests
+return 400; unknown read/delete records return 404; duplicate, busy or stale
+writes return 409. Delete can remove an obsolete association even when its image
+is no longer present. Notes with commas, quotes and line breaks are CSV-escaped.
+
+Writes hold an exclusive sibling `.lock`, parse the existing CSV strictly,
+write and flush a unique same-directory temporary file, then rename it atomically.
+The original header, BOM and newline style are preserved. Malformed CSV is never
+silently overwritten. Do not manually edit the CSV while the server is writing.
+An abnormal process termination can leave a lock: after verifying all POC servers
+are stopped, inspect the CSV and remove only its stale `.lock` before retrying.
+The UI reports save errors and offers refresh; stale tabs cannot overwrite newer
+records. This remains a local admin POC, not an authenticated multi-user service.
+
+Tests: `node --test server/terrestrial-evidence.test.js server/terrestrial-panoramas.test.js`.

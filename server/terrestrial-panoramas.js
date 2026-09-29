@@ -25,6 +25,37 @@ export function expectedPanoramas(dataset) {
   }));
 }
 
+export async function resolvePanoramaFile(dataset, filename, configuredRoot) {
+  if (/[\\/:\x00]/.test(filename) || !expectedPanoramas(dataset).some(item => item.filename === filename)) {
+    throw fail(404, 'Panorama not found');
+  }
+  configuredRoot = configuredRoot?.trim();
+  if (!configuredRoot) throw fail(404, 'Terrestrial data is unavailable');
+  const root = await realpath(configuredRoot);
+  const directory = dataset.panorama_directory;
+  if (typeof directory !== 'string' || !directory || path.isAbsolute(directory)) {
+    throw fail(500, 'Invalid panorama directory configuration');
+  }
+  const candidate = path.resolve(root, directory);
+  if (!within(root, candidate)) throw fail(404, 'Panorama not found');
+  const panoramaRoot = await realpath(candidate);
+  if (!within(root, panoramaRoot)) throw fail(404, 'Panorama not found');
+  const file = path.join(panoramaRoot, filename);
+  // Reject symlinks, directories and other non-regular files.
+  if (!(await lstat(file)).isFile()) throw fail(404, 'Panorama not found');
+  const resolved = await realpath(file);
+  if (!within(panoramaRoot, resolved)) throw fail(404, 'Panorama not found');
+  const handle = await open(resolved, 'r');
+  try {
+    const signature = Buffer.alloc(3);
+    const { bytesRead } = await handle.read(signature, 0, 3, 0);
+    if (bytesRead !== 3 || !signature.equals(Buffer.from([0xff, 0xd8, 0xff]))) {
+      throw fail(404, 'Panorama is unavailable or is not a JPEG');
+    }
+  } finally { await handle.close(); }
+  return resolved;
+}
+
 // This router has no database dependency and never mounts an external static directory.
 export function terrestrialPanoramaRouter({ configPath, getRoot }) {
   const router = express.Router();
@@ -44,34 +75,7 @@ export function terrestrialPanoramaRouter({ configPath, getRoot }) {
   router.get('/:datasetId/panoramas/:filename', async (req, res, next) => {
     try {
       const dataset = await datasetById(req.params.datasetId);
-      const filename = req.params.filename;
-      if (/[\\/:\x00]/.test(filename) || !expectedPanoramas(dataset).some(item => item.filename === filename)) {
-        throw fail(404, 'Panorama not found');
-      }
-      const configuredRoot = getRoot()?.trim();
-      if (!configuredRoot) throw fail(404, 'Terrestrial data is unavailable');
-      const root = await realpath(configuredRoot);
-      const directory = dataset.panorama_directory;
-      if (typeof directory !== 'string' || !directory || path.isAbsolute(directory)) {
-        throw fail(500, 'Invalid panorama directory configuration');
-      }
-      const candidate = path.resolve(root, directory);
-      if (!within(root, candidate)) throw fail(404, 'Panorama not found');
-      const panoramaRoot = await realpath(candidate);
-      if (!within(root, panoramaRoot)) throw fail(404, 'Panorama not found');
-      const file = path.join(panoramaRoot, filename);
-      // Reject symlinks, directories and other non-regular files.
-      if (!(await lstat(file)).isFile()) throw fail(404, 'Panorama not found');
-      const resolved = await realpath(file);
-      if (!within(panoramaRoot, resolved)) throw fail(404, 'Panorama not found');
-      const handle = await open(resolved, 'r');
-      try {
-        const signature = Buffer.alloc(3);
-        const { bytesRead } = await handle.read(signature, 0, 3, 0);
-        if (bytesRead !== 3 || !signature.equals(Buffer.from([0xff, 0xd8, 0xff]))) {
-          throw fail(404, 'Panorama is unavailable or is not a JPEG');
-        }
-      } finally { await handle.close(); }
+      const resolved = await resolvePanoramaFile(dataset, req.params.filename, getRoot());
       res.set('X-Content-Type-Options', 'nosniff');
       res.type('jpeg');
       res.sendFile(resolved, { dotfiles: 'deny', cacheControl: false }, error => {

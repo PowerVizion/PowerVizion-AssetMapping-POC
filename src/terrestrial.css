@@ -24,3 +24,14 @@
 .terrestrialFilename { overflow-wrap: anywhere; }
 @media (max-width: 1000px) { .terrestrialFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .terrestrialFacts { grid-template-columns: 1fr; } .terrestrialCard { padding: 14px; } .terrestrialNavigation { flex-wrap: wrap; } .terrestrialNavigation label { order: -1; flex-basis: 100%; } .terrestrialViewport { min-height: 220px; } }
+
+.terrestrialAssociation { border: 1px solid #244047; border-radius: 8px; padding: 18px; margin: 18px 0; background: #081013; }
+.terrestrialAssociationForm { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; max-width: 760px; min-width: 0; }
+.terrestrialAssociation .terrestrialFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.terrestrialAssociation .evidenceNotes { grid-column: 1 / -1; }
+.evidenceNotes { white-space: pre-wrap; overflow-wrap: anywhere; }
+.terrestrialEvidenceRow { display: grid; grid-template-columns: minmax(160px, 280px) minmax(0, 1fr); gap: 20px; border-top: 1px solid #244047; padding: 20px 0; }
+.terrestrialEvidenceRow img { width: 100%; aspect-ratio: 2 / 1; object-fit: contain; background: #050708; border-radius: 8px; }
+.terrestrialEvidenceRow dt { color: #8fb0b7; font-size: 12px; margin-bottom: 4px; }
+.terrestrialEvidenceRow dd { margin: 0 0 12px; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .terrestrialEvidenceRow, .terrestrialAssociation .terrestrialFacts { grid-template-columns: 1fr; } }

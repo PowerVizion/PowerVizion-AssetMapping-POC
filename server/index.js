@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { terrestrialEvidenceRouter } from './terrestrial-evidence.js';
 import { terrestrialPanoramaRouter } from './terrestrial-panoramas.js';
 import { readTerrestrialDatasets } from './terrestrial.js';
 import { fileURLToPath } from 'node:url';
@@ -68,6 +69,13 @@ app.get('/api/terrestrial-datasets', async (req, res) => {
 app.use('/api/terrestrial-datasets', terrestrialPanoramaRouter({
   configPath: path.join(root, 'data', 'terrestrial_datasets.json'),
   getRoot: () => process.env.POWERVIZ_TERRESTRIAL_ROOT
+}));
+
+app.use('/api/terrestrial-evidence', terrestrialEvidenceRouter({
+  csvPath: path.join(root, 'data', 'terrestrial_evidence.csv'),
+  configPath: path.join(root, 'data', 'terrestrial_datasets.json'),
+  getRoot: () => process.env.POWERVIZ_TERRESTRIAL_ROOT,
+  assetExists: assetId => Boolean(get('SELECT id FROM asset_locations WHERE id = ?', [assetId]))
 }));
 
 app.get('/api/summary', (req, res) => {
