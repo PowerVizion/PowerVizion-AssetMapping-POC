@@ -5,6 +5,7 @@ import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap } fro
 import { ArrowLeft, ArrowRight, BarChart3, CheckCircle2, Download, Eye, FileWarning, Gauge, Layers, ListFilter, LocateFixed, Map, MapPin, Maximize2, Minus, PlayCircle, Plus, RotateCcw, Save, ShieldCheck, SlidersHorizontal, Table2 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
+import TerrestrialData from './TerrestrialData.jsx';
 
 const emptyForm = {
   component_type: 'Transformer',
@@ -57,7 +58,7 @@ function Badge({ value }) {
 }
 
 function Header({ page, setPage }) {
-  const items = ['Dashboard', 'Asset Map', 'Admin Review', 'Client View', 'Export'];
+  const items = ['Dashboard', 'Asset Map', 'Admin Review', 'Client View', 'Export', 'Terrestrial Data'];
   return (
     <header className="topbar">
       <div>
@@ -1244,6 +1245,7 @@ function App() {
   };
 
   const content = useMemo(() => {
+    if (page === 'Terrestrial Data') return <TerrestrialData />;
     if (page === 'Asset Map') return <AssetMapPage assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} />;
     if (page === 'Admin Review') return <AdminReview assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} reload={reload} options={options} />;
     if (page === 'Client View') return <ClientView assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} />;

@@ -88,8 +88,36 @@ is reported as availability status with HTTP 200. Missing, malformed, or
 invalid dataset configuration produces a JSON error with HTTP 500.
 Dataset file/directory paths must be relative and stay within the configured
 root. Availability checks do not validate E57/JPEG contents or count points.
-This endpoint does not serve terrestrial files, ingest data, read associations,
+The discovery endpoint does not serve terrestrial files, ingest data, read associations,
 or write to SQLite. No ingest step is needed for this integration.
 
 Windows verification: `npm.cmd run build`, then `npm.cmd run dev` and
 `Invoke-RestMethod http://127.0.0.1:4000/api/terrestrial-datasets`.
+
+## Terrestrial Data Tab and Panorama Browser
+
+Open **Terrestrial Data** to see dataset metadata, local availability, and
+the pending association state. **Browse Panoramas** opens Setup 001. Use
+Previous/Next or the setup selector to browse the configured setup range.
+Zoom In/Out supports 100–400% of the fitted image; drag when zoomed and
+use Reset Zoom to restore the fitted view. Each setup starts at 100%.
+The viewer displays the original JPEG as a flat image, not a spherical view.
+Missing/unreadable images show a retry message; setup navigation stays available.
+
+Read-only routes:
+- `GET /api/terrestrial-datasets/:datasetId/panoramas`: expected setup numbers
+  and filenames derived from the dataset's pattern and setup count.
+- `GET /api/terrestrial-datasets/:datasetId/panoramas/:filename`: a single
+  configured JPEG. Unknown datasets, unexpected filenames, missing files,
+  invalid JPEG signatures and paths outside the dataset return JSON errors.
+  Filenames must exactly match the allowlist, including case. No generic
+  external static directory is exposed. Resolved paths are checked and
+  image symlinks are rejected.
+
+The catalog lists expected setups even if files are missing. Declared counts
+remain separate from observed local panorama counts. Asset association count
+is zero and the status is Pending for this milestone; the header-only
+`data/terrestrial_evidence.csv` is not modified or populated by this UI.
+No SQLite schema, ingestion, annotation or existing review behavior is changed.
+
+Run focused route tests with `node --test server/terrestrial-panoramas.test.js`.

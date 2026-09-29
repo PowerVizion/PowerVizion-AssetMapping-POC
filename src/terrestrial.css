@@ -1,0 +1,26 @@
+.terrestrialPage { max-width: 1600px; margin: 0 auto; }
+.terrestrialCard { padding: 24px; min-width: 0; }
+.terrestrialHeading, .terrestrialFooter { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.terrestrialHeading h1 { font-size: 30px; margin: 10px 0; }
+.terrestrialHeading h2 { font-size: 24px; margin: 10px 0; }
+.terrestrialCard p { color: #9db8be; }
+.terrestrialCard p.eyebrow { color: #38d6bd; }
+.terrestrialFacts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
+.terrestrialFacts > div { padding: 16px; border: 1px solid #203940; border-radius: 8px; background: #081013; }
+.terrestrialFacts dt { color: #8fb0b7; font-size: 12px; margin-bottom: 10px; }
+.terrestrialFacts dd { margin: 0; font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+.terrestrialFooter { border-top: 1px solid #203940; padding-top: 12px; }
+.terrestrialFooter p, .terrestrialHint { font-size: 13px; }
+.terrestrialNavigation { display: flex; gap: 12px; align-items: end; margin: 16px 0; }
+.terrestrialNavigation label { flex: 1; max-width: 540px; }
+.terrestrialZoom { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
+.terrestrialZoom output { margin-left: auto; font-variant-numeric: tabular-nums; color: #8ff0bd; }
+.terrestrialViewport { aspect-ratio: 2 / 1; width: 100%; overflow: hidden; position: relative; border: 1px solid #244047; border-radius: 8px; background: #050708; }
+.terrestrialViewport img { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; transform-origin: center; }
+.terrestrialViewport.canPan { cursor: grab; touch-action: none; }
+.terrestrialViewport.canPan:active { cursor: grabbing; }
+.terrestrialImageMessage { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+.terrestrialImageMessage h2, .terrestrialImageMessage p { margin: 0; }
+.terrestrialFilename { overflow-wrap: anywhere; }
+@media (max-width: 1000px) { .terrestrialFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .terrestrialFacts { grid-template-columns: 1fr; } .terrestrialCard { padding: 14px; } .terrestrialNavigation { flex-wrap: wrap; } .terrestrialNavigation label { order: -1; flex-basis: 100%; } .terrestrialViewport { min-height: 220px; } }

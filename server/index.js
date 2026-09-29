@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { terrestrialPanoramaRouter } from './terrestrial-panoramas.js';
 import { readTerrestrialDatasets } from './terrestrial.js';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -63,6 +64,11 @@ app.get('/api/terrestrial-datasets', async (req, res) => {
     res.status(500).json({ error: 'Unable to read terrestrial dataset configuration' });
   }
 });
+
+app.use('/api/terrestrial-datasets', terrestrialPanoramaRouter({
+  configPath: path.join(root, 'data', 'terrestrial_datasets.json'),
+  getRoot: () => process.env.POWERVIZ_TERRESTRIAL_ROOT
+}));
 
 app.get('/api/summary', (req, res) => {
   const summary = {
