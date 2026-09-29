@@ -1,4 +1,4 @@
-﻿[
+[
   {
     "dataset_id": "MH_SUB_1",
     "display_name": "Manitoba Hydro Substation Terrestrial Scan",
@@ -12,6 +12,29 @@
     "panorama_pattern": "WINNIPEG- Setup ###.jpg",
     "setup_count": 57,
     "association_status": "manual_pending",
-    "notes": "Unified E57 validated independently. Individual panorama/setup XYZ and orientation metadata are not currently available."
+    "notes": "Unified E57 validated independently. Individual panorama/setup XYZ and orientation metadata are not currently available.",
+    "web_point_cloud": {
+      "name": "MH_SUB_TEST_1M",
+      "format": "potree-2.0",
+      "directory": "MH_SUB_TEST_1M_POTREE",
+      "point_count": 1000000
+    },
+    "point_cloud_variants": [
+      {
+        "id": "preview_1m",
+        "label": "Fast Preview",
+        "name": "MH_SUB_TEST_1M",
+        "directory": "MH_SUB_TEST_1M_POTREE",
+        "points": 1000000
+      },
+      {
+        "id": "detail_10m",
+        "label": "Detailed",
+        "name": "MH_SUB_TEST_10M",
+        "directory": "MH_SUB_TEST_10M_POTREE",
+        "points": 10000000
+      }
+    ],
+    "default_point_cloud_variant": "detail_10m"
   }
 ]

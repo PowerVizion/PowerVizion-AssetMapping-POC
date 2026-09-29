@@ -164,3 +164,78 @@ The UI reports save errors and offers refresh; stale tabs cannot overwrite newer
 records. This remains a local admin POC, not an authenticated multi-user service.
 
 Tests: `node --test server/terrestrial-evidence.test.js server/terrestrial-panoramas.test.js`.
+
+## 3D Terrestrial Point Cloud
+
+**Terrestrial Data → Open 3D Point Cloud** opens the configured Manitoba Hydro
+Potree 2.0 test cloud. The original E57 and panorama workflows are unchanged.
+The viewer uses pinned local npm dependencies (`potree-core` 2.0.15 and
+`three` 0.154.0); rendering and decoder workers are bundled by Vite, with no CDN.
+Potree Core is MIT licensed: https://github.com/tentone/potree-core.
+
+Set `POWERVIZ_WEB_POINTCLOUD_ROOT` in the local ignored `.env` to the approved
+external web-cloud root. `data/terrestrial_datasets.json` declares a relative
+`web_point_cloud.directory`, name, format and point-count metadata per dataset.
+For MH_SUB_1, the directory is `MH_SUB_TEST_1M_POTREE`; it must contain
+`metadata.json`, `hierarchy.bin` and `octree.bin`. Keep binary cloud data external;
+these filenames are ignored by Git. Restart the API after changing the environment.
+
+Read-only route (also supports HEAD and byte ranges):
+`GET /api/terrestrial-datasets/:datasetId/point-cloud/:filename`.
+Only the three exact filenames above are served for configured datasets. Paths
+are checked both lexically and after resolving junctions; file symlinks and
+paths outside the approved root are rejected. Missing data returns JSON 404,
+invalid ranges return 416. No generic external static directory is exposed.
+Responses disable caching to avoid stale/overlapping partial-response caches.
+
+Controls: left drag to orbit, right drag or arrow keys to pan, scroll or toolbar
+buttons to zoom. Fit to Cloud recenters while retaining the viewing direction;
+Reset View restores the initial direction. Point size and RGB/elevation modes
+are available. The viewer rebases survey coordinates near the origin for GPU
+precision and loads visible Potree nodes progressively, up to a 2M point budget
+(1M for Fast Preview). The displayed visible-point count varies with the view.
+The material shares decoded RGBA bytes as normalized RGB and preserves their
+source color encoding; it does not rewrite the external dataset.
+
+Requires a browser/GPU supporting WebGL and the bundled Potree shaders.
+Missing files, failed requests, decoder errors and graphics-context loss display
+an error with Retry/Back controls. This milestone renders the 1M and 10M test clouds,
+not the full 1.26B-point E57. No scan markers, measurements or panorama positioning
+are included. SQLite, association CSV, Client View and Export are not modified.
+
+Tests: `node --test server/terrestrial-pointcloud.test.js server/terrestrial-panoramas.test.js server/terrestrial-evidence.test.js`.
+
+### Selectable point-cloud detail
+
+MH_SUB_1 declares `point_cloud_variants` with approved IDs, labels, names,
+relative directories and exact point counts:
+
+- `preview_1m`: Fast Preview, `MH_SUB_TEST_1M_POTREE`, 1,000,000 points.
+- `detail_10m`: Detailed, `MH_SUB_TEST_10M_POTREE`, 10,000,000 points.
+
+Both directories resolve under `POWERVIZ_WEB_POINTCLOUD_ROOT`. The new route is
+`GET /api/terrestrial-datasets/:datasetId/point-cloud/:variantId/:filename`.
+It uses the same three-file allowlist, containment checks, HEAD and byte-range
+streaming as the original route. Unknown variants cannot select arbitrary folders.
+The original URL without a variant remains an alias for the configured 1M cloud.
+
+The Point Cloud Detail selector stays available while loading or after errors.
+Switching aborts pending requests, terminates decoder workers, disposes geometry,
+materials, controls and renderer, then fits the new cloud. Point size and color
+mode persist; camera position resets to fit the selected dataset's own bounds.
+Retry reloads the current selection. First-point loading has a 45-second timeout.
+
+`default_point_cloud_variant` is `detail_10m` after successful local browser tests.
+Both variants reached approximately 60 fps over the initial five-second samples;
+first points appeared in approximately 0.05–0.07 seconds on this machine with
+local files. These are initial progressive-render samples, not full dataset
+transfer timings or guarantees for other hardware. Detailed rendering remained
+responsive during navigation and repeated switching and visibly filled in more
+structure, ground and vegetation. Development builds log first-point timing and
+one initial frame-rate sample per load to help reproduce this comparison.
+
+The visible-point budget is capped at 2M (1M for the preview); finer nodes are
+streamed from the full 10M dataset as the view changes. The header shows total
+dataset points; the footer shows currently visible points. GPU speed, viewport,
+point size and view position affect performance. No external binary files,
+SQLite records, association CSV records, Client View or Export changes are needed.

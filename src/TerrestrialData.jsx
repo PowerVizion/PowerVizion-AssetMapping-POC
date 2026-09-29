@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Images, Minus, Plus, RotateCcw } from 'lucide-react';
 import './terrestrial.css';
 import { AssetAssociation, evidenceRequest } from './TerrestrialEvidence.jsx';
+
+const PointCloudViewer = lazy(() => import('./PointCloudViewer.jsx'));
 
 const API = 'http://127.0.0.1:4000/api/terrestrial-datasets';
 async function getJson(url, signal) {
@@ -15,6 +17,7 @@ export default function TerrestrialData({ initialTarget }) {
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [cloudDataset, setCloudDataset] = useState(null);
   const [associations, setAssociations] = useState(null);
   const [associationError, setAssociationError] = useState('');
   const [associationVersion, setAssociationVersion] = useState(0);
@@ -42,6 +45,7 @@ export default function TerrestrialData({ initialTarget }) {
     });
     return () => controller.abort();
   }, [attempt]);
+  if (cloudDataset) return <Suspense fallback={<main className="page"><p role="status">Loading 3D viewer…</p></main>}><PointCloudViewer dataset={cloudDataset} onBack={() => setCloudDataset(null)} /></Suspense>;
   if (selected) return <PanoramaBrowser dataset={selected} initialSetup={initialTarget?.dataset_id === selected.dataset_id ? initialTarget.setup_id : null} onChanged={() => setAssociationVersion(value => value + 1)} onBack={() => { setSelected(null); setAssociationVersion(value => value + 1); }} />;
   return <main className="page terrestrialPage">
     <section className="intro compact"><div><p className="eyebrow">Terrestrial evidence</p><h1>Terrestrial Data</h1><p>Explore scan datasets and high-resolution panoramas before associating evidence with assets.</p></div><span className="badge neutral">Admin Validation</span></section>
@@ -60,7 +64,7 @@ export default function TerrestrialData({ initialTarget }) {
         <div className="terrestrialHeading"><div><p className="eyebrow">{dataset.dataset_id}</p><h2>{dataset.display_name}</h2></div><span className={`badge ${available ? 'good' : 'warn'}`}>Status: {available ? 'Available' : 'Missing'}</span></div>
         <dl className="terrestrialFacts">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? 'Unknown'}</dd></div>)}</dl>
         {local.panorama_count_matches_expected === false && <p role="status">Some expected panoramas are missing. Available images can still be browsed.</p>}
-        <div className="terrestrialFooter"><p>Manual associations are for admin validation. Point and setup counts are dataset metadata.</p><button onClick={() => setSelected(dataset)}><Images size={18} />Browse Panoramas</button></div>
+        <div className="terrestrialFooter"><p>Manual associations are for admin validation. Point and setup counts are dataset metadata.</p>{(dataset.web_point_cloud || dataset.point_cloud_variants?.length) && <button onClick={() => setCloudDataset(dataset)}>Open 3D Point Cloud</button>}<button onClick={() => setSelected(dataset)}><Images size={18} />Browse Panoramas</button></div>
       </section>;
     })}
   </main>;
