@@ -239,3 +239,29 @@ streamed from the full 10M dataset as the view changes. The header shows total
 dataset points; the footer shows currently visible points. GPU speed, viewport,
 point size and view position affect performance. No external binary files,
 SQLite records, association CSV records, Client View or Export changes are needed.
+
+## Terrestrial Survey on Asset Map
+
+The Real Map View reads enabled polygon footprints from each terrestrial dataset's
+`map` configuration. Coordinates use Leaflet latitude/longitude order. MH_SUB_1
+uses the four supplied Manitoba Hydro corners; its amber dashed polygon is a
+separate Terrestrial Survey entity, not an asset marker or SQLite row.
+
+The survey popup displays source/web point counts, panorama count, and association
+count read from the evidence API (refreshed whenever the popup opens). Failed
+association reads display Unavailable rather than a fabricated zero. Open 3D
+uses the dataset's default detail; Browse Panoramas starts its panorama browser;
+View Dataset opens the terrestrial summary. Survey interaction does not change
+the selected pole/structure. A Survey shortcut fits the footprint; Fit all assets
+includes both filtered asset coordinates and enabled survey polygons. Zoom to
+selected still focuses the selected normal asset. Asset filters do not hide the
+independent survey layer; QA Canvas and Register Table remain asset-only.
+
+The footprint is provisional for POC visualization. The original coordinates are
+consistent with UTM Zone 14N, the E57 coordinateMetadata is blank, and the datum
+has not been authoritatively verified. The UI does not claim survey certification.
+Basemap tiles still require the existing OpenStreetMap connection; polygon and
+asset overlays remain usable if tiles are unavailable. Admin Review and Client
+View receive no survey layer. Export remains the final tab and its data is unchanged.
+
+Map configuration tests: `node --test src/surveyMap.test.js`.

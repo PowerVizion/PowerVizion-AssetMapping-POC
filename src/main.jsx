@@ -6,6 +6,8 @@ import { ArrowLeft, ArrowRight, BarChart3, CheckCircle2, Download, Eye, FileWarn
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 import TerrestrialData from './TerrestrialData.jsx';
+import { SurveyPolygon, useMappedSurveys } from './SurveyMap.jsx';
+import { mapPositions } from './surveyMap.js';
 import { AdminTerrestrialEvidence } from './TerrestrialEvidence.jsx';
 
 const emptyForm = {
@@ -123,7 +125,8 @@ function unique(values) {
   return [...new Set(values.filter(value => value !== undefined && value !== null && value !== ''))];
 }
 
-function AssetMapPage({ assets, selectedId, setSelectedId, detail }) {
+function AssetMapPage({ assets, selectedId, setSelectedId, detail, onOpenSurvey }) {
+  const { surveys, surveyError } = useMappedSurveys();
   const [view, setView] = useState('real');
   const [filters, setFilters] = useState({
     project: 'All',
@@ -274,7 +277,7 @@ function AssetMapPage({ assets, selectedId, setSelectedId, detail }) {
           </div>
 
           {view === 'real' ? (
-            <RealMapView plotted={plotted} selectedId={selectedId} setSelectedId={setSelectedId} />
+            <><RealMapView plotted={plotted} selectedId={selectedId} setSelectedId={setSelectedId} surveys={surveys} onOpenSurvey={onOpenSurvey} />{surveyError && <p role="status">{surveyError}</p>}</>
           ) : view === 'canvas' ? (
             <div className="geoCanvas">
               {plotted.length ? (
@@ -327,8 +330,8 @@ function AssetMapPage({ assets, selectedId, setSelectedId, detail }) {
   );
 }
 
-function RealMapView({ plotted, selectedId, setSelectedId }) {
-  return <InteractiveAssetMap assets={plotted.map(point => point.asset)} selectedId={selectedId} setSelectedId={setSelectedId} className="realMapCanvas" />;
+function RealMapView({ plotted, selectedId, setSelectedId, surveys, onOpenSurvey }) {
+  return <InteractiveAssetMap assets={plotted.map(point => point.asset)} selectedId={selectedId} setSelectedId={setSelectedId} className="realMapCanvas" surveys={surveys} onOpenSurvey={onOpenSurvey} />;
 }
 
 function escapeHtml(value) {
@@ -373,14 +376,15 @@ function validMapAssets(assets) {
   return assets.filter(asset => Number.isFinite(Number(asset.latitude)) && Number.isFinite(Number(asset.longitude)));
 }
 
-function MapSync({ assets, selectedId, focusSignal, fitSignal }) {
+function MapSync({ assets, selectedId, focusSignal, fitSignal, surveys = [] }) {
   const map = useMap();
-  const boundsKey = assets.map(asset => `${asset.id}:${asset.latitude}:${asset.longitude}`).join('|');
+  const positions = mapPositions(assets, surveys);
+  const boundsKey = JSON.stringify(positions);
   const selectedAsset = assets.find(asset => asset.id === selectedId);
 
   useEffect(() => {
-    if (!assets.length) return;
-    const bounds = L.latLngBounds(assets.map(asset => [Number(asset.latitude), Number(asset.longitude)]));
+    if (!positions.length) return;
+    const bounds = L.latLngBounds(positions);
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [46, 46], maxZoom: 15 });
   }, [map, boundsKey, fitSignal]);
 
@@ -392,7 +396,7 @@ function MapSync({ assets, selectedId, focusSignal, fitSignal }) {
   return null;
 }
 
-function LeafletControlButtons({ onFitAll, onZoomSelected, tileError }) {
+function LeafletControlButtons({ onFitAll, onZoomSelected, tileError, surveys = [] }) {
   const map = useMap();
   return (
     <div className="leafletControlPanel">
@@ -400,12 +404,13 @@ function LeafletControlButtons({ onFitAll, onZoomSelected, tileError }) {
       <button type="button" onClick={() => map.zoomOut()} aria-label="Zoom out"><Minus size={15} /></button>
       <button type="button" onClick={onZoomSelected}><LocateFixed size={15} /> Zoom to selected</button>
       <button type="button" onClick={onFitAll}><Maximize2 size={15} /> Fit all assets</button>
+      {surveys.map(dataset => <button type="button" key={dataset.dataset_id} onClick={() => { map.closePopup(); map.fitBounds(dataset.map.footprint, { padding: [60, 60], maxZoom: 18, animate: false }); }}>Survey: {dataset.map.label || dataset.display_name}</button>)}
       {tileError && <span>Basemap tiles unavailable; markers remain interactive.</span>}
     </div>
   );
 }
 
-function InteractiveAssetMap({ assets, selectedId, setSelectedId, className = '', readOnly = false }) {
+function InteractiveAssetMap({ assets, selectedId, setSelectedId, className = '', readOnly = false, surveys = [], onOpenSurvey }) {
   const [tileError, setTileError] = useState(false);
   const [focusSignal, setFocusSignal] = useState(0);
   const [fitSignal, setFitSignal] = useState(0);
@@ -418,7 +423,7 @@ function InteractiveAssetMap({ assets, selectedId, setSelectedId, className = ''
 
   useEffect(() => setTileError(false), [mapAssets.map(asset => asset.id).join('|')]);
 
-  if (!mapAssets.length) return <div className="empty mapEmpty">No GPS coordinates are available for the current filter.</div>;
+  if (!mapAssets.length && !surveys.length) return <div className="empty mapEmpty">No GPS coordinates are available for the current filter.</div>;
 
   return (
     <div className={`interactiveMapShell ${className}`}>
@@ -428,7 +433,7 @@ function InteractiveAssetMap({ assets, selectedId, setSelectedId, className = ''
         </div>
       )}
       <MapContainer
-        center={[Number(centerAsset.latitude), Number(centerAsset.longitude)]}
+        center={centerAsset ? [Number(centerAsset.latitude), Number(centerAsset.longitude)] : surveys[0].map.footprint[0]}
         zoom={14}
         scrollWheelZoom
         zoomControl={false}
@@ -439,12 +444,14 @@ function InteractiveAssetMap({ assets, selectedId, setSelectedId, className = ''
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           eventHandlers={{ tileerror: () => setTileError(true) }}
         />
-        <MapSync assets={mapAssets} selectedId={selectedId} focusSignal={focusSignal} fitSignal={fitSignal} />
+        <MapSync assets={mapAssets} selectedId={selectedId} focusSignal={focusSignal} fitSignal={fitSignal} surveys={surveys} />
         <LeafletControlButtons
+          surveys={surveys}
           tileError={tileError}
           onFitAll={() => setFitSignal(value => value + 1)}
           onZoomSelected={() => setFocusSignal(value => value + 1)}
         />
+        {surveys.map(dataset => <SurveyPolygon key={dataset.dataset_id} dataset={dataset} onOpen={onOpenSurvey} />)}
         {routePositions.length > 1 && <Polyline positions={routePositions} pathOptions={{ color: '#38d6bd', weight: 3, opacity: 0.65, dashArray: '8 8' }} />}
         {mapAssets.map(asset => (
           <Marker
@@ -484,6 +491,7 @@ function InteractiveAssetMap({ assets, selectedId, setSelectedId, className = ''
         ))}
         <span><i className="legendShape pv-map-marker--structure" />8K structure</span>
         <span><i className="legendShape pv-map-marker--distribution" />Alley pole</span>
+        {surveys.length > 0 && <span><i className="surveyLegend" />Terrestrial Survey · Provisional</span>}
       </div>
     </div>
   );
@@ -1219,6 +1227,10 @@ function App() {
     setPanoramaTarget({ dataset_id: row.dataset_id, setup_id: row.setup_id });
     setPage('Terrestrial Data');
   }
+  function openSurvey(dataset, mode) {
+    setPanoramaTarget({ dataset_id: dataset.dataset_id, mode });
+    setPage('Terrestrial Data');
+  }
   const [summary, setSummary] = useState({});
   const [assets, setAssets] = useState([]);
   const [options, setOptions] = useState({});
@@ -1253,7 +1265,7 @@ function App() {
 
   const content = useMemo(() => {
     if (page === 'Terrestrial Data') return <TerrestrialData initialTarget={panoramaTarget} />;
-    if (page === 'Asset Map') return <AssetMapPage assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} />;
+    if (page === 'Asset Map') return <AssetMapPage assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} onOpenSurvey={openSurvey} />;
     if (page === 'Admin Review') return <AdminReview assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} reload={reload} options={options} onOpenPanorama={openPanorama} />;
     if (page === 'Client View') return <ClientView assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} />;
     if (page === 'Export') return <ExportPage preview={preview} />;

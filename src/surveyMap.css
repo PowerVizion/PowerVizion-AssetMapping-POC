@@ -1,0 +1,11 @@
+.surveyPopup { display: grid; gap: 8px; color: #e5edf2; }
+.surveyPopup strong { font-size: 15px; line-height: 1.4; }
+.surveyEntity { color: #f3bc63; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.surveyPopup dl { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; margin: 0; }
+.surveyPopup dt { color: #9db8be; }
+.surveyPopup dd { margin: 0; }
+.surveyPopup p { color: #e7c796; font-size: 11px; margin: 3px 0 !important; line-height: 1.5; }
+.surveyActions { display: flex; flex-wrap: wrap; gap: 6px; }
+.surveyActions button { font-size: 12px; padding: 7px 9px; }
+.surveyLegend { width: 15px; height: 11px; border: 2px dashed #f3bc63; background: #f3bc6333; }
+.terrestrialSurveyPolygon:focus { outline: none; stroke-width: 5; }

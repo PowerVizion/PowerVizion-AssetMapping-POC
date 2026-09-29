@@ -37,7 +37,10 @@ export default function TerrestrialData({ initialTarget }) {
       setDatasets(rows);
       if (initialTarget) {
         const dataset = rows.find(row => row.dataset_id === initialTarget.dataset_id);
-        if (dataset) setSelected(dataset);
+        if (dataset) {
+          if (initialTarget.mode === '3d') setCloudDataset(dataset);
+          else if (initialTarget.mode !== 'summary') setSelected(dataset);
+        }
         else setError('The associated dataset is no longer configured.');
       }
     }).catch(error => {

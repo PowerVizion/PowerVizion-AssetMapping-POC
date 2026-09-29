@@ -35,6 +35,32 @@
         "points": 10000000
       }
     ],
-    "default_point_cloud_variant": "detail_10m"
+    "default_point_cloud_variant": "detail_10m",
+    "map": {
+      "enabled": true,
+      "geometry_type": "polygon",
+      "crs_status": "provisional",
+      "source_crs": "UTM Zone 14N",
+      "label": "Manitoba Hydro Substation",
+      "crs_notes": "E57 coordinateMetadata is blank. Datum has not been authoritatively verified. Provisional footprint for POC visualization; not survey-certified positioning.",
+      "footprint": [
+        [
+          49.8784319,
+          -97.1969007
+        ],
+        [
+          49.8783743,
+          -97.19320163
+        ],
+        [
+          49.88079879,
+          -97.19311112
+        ],
+        [
+          49.8808564,
+          -97.19681038
+        ]
+      ]
+    }
   }
 ]
