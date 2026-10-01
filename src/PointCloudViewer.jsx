@@ -1,14 +1,20 @@
+import { createPortal } from 'react-dom';
+import { StationTools } from './StationTools.jsx';
+import { pickStationPoint, stationLocal } from './stationGeometry.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { Box3, Vector3, PerspectiveCamera, Scene, WebGLRenderer, Color, Sphere, InterleavedBuffer, InterleavedBufferAttribute } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Potree, PointColorType, PointSizeType, PointShape, PointCloudMaterial } from 'potree-core';
 import './pointcloud.css';
 
-export default function PointCloudViewer({ dataset, onBack }) {
+export default function PointCloudViewer({ dataset, onBack, onOpenPanorama, focusSetup }) {
   const variants = dataset.point_cloud_variants || [{ id: 'preview_1m', label: 'Fast Preview', name: dataset.web_point_cloud.name, points: dataset.web_point_cloud.point_count }];
   const [variantId, setVariantId] = useState(dataset.default_point_cloud_variant || variants[0].id);
   const variant = variants.find(item => item.id === variantId) || variants[0];
   const settings = useRef({ size: 2, color: 'RGB' });
+  const stationBridge = useRef(null);
+  const [markerHost, setMarkerHost] = useState(null);
+  const [stationEditing, setStationEditing] = useState(false);
   const host = useRef(null);
   const viewer = useRef(null);
   const [attempt, setAttempt] = useState(0);
@@ -18,7 +24,7 @@ export default function PointCloudViewer({ dataset, onBack }) {
   const [size, setSize] = useState(2);
   const [color, setColor] = useState('RGB');
   useEffect(() => {
-    let active = true, frameId, cloud, renderer, controls, observer, timeout;
+    let active = true, frameId, cloud, renderer, controls, observer, timeout, removePicking;
     const controller = new AbortController();
     const workers = new Set();
     const container = host.current;
@@ -130,7 +136,27 @@ export default function PointCloudViewer({ dataset, onBack }) {
           camera.position.copy(controls.target).add(direction.setLength(distance));
           controls.update();
         }
-        viewer.current = { cloud, fit, zoom, camera, controls };
+        function focusStation(row) {
+          const point = stationLocal(row, center);
+          const direction = camera.position.clone().sub(controls.target).normalize();
+          if (!direction.lengthSq()) direction.set(0.9,-1,0.75).normalize();
+          controls.target.copy(point); camera.position.copy(point).addScaledVector(direction, 20); controls.update();
+        }
+        let pointerStart;
+        const down = event => { if(event.button===0) pointerStart={x:event.clientX,y:event.clientY}; };
+        const up = event => {
+          const start=pointerStart; pointerStart=null;
+          if(!start || event.button!==0 || !stationBridge.current?.placing || Math.hypot(start.x-event.clientX,start.y-event.clientY)>5)return;
+          const rect=renderer.domElement.getBoundingClientRect();
+          camera.updateMatrixWorld(true); scene.updateMatrixWorld(true);
+          stationBridge.current.pick(pickStationPoint(cloud,camera,center,{x:event.clientX-rect.left,y:event.clientY-rect.top},rect.width,rect.height));
+        };
+        const cancel = () => { pointerStart=null; };
+        renderer.domElement.addEventListener('pointerdown',down);
+        renderer.domElement.addEventListener('pointerup',up);
+        renderer.domElement.addEventListener('pointercancel',cancel);
+        removePicking=()=>{renderer.domElement.removeEventListener('pointerdown',down);renderer.domElement.removeEventListener('pointerup',up);renderer.domElement.removeEventListener('pointercancel',cancel);};
+        viewer.current = { cloud, fit, zoom, camera, controls, focusStation };
         let lastStatus = 0, shown = false, readyAt = 0, sampledFrames = 0, reported = false;
         function render(now) {
           if (!active || controller.signal.aborted) return;
@@ -147,6 +173,7 @@ export default function PointCloudViewer({ dataset, onBack }) {
               }
             }
             renderer.render(scene, camera);
+            stationBridge.current?.project(camera, center, container.clientWidth, container.clientHeight);
             const count = cloud.visibleNodes.reduce((sum, node) => sum + (node.sceneNode.geometry.getAttribute('position')?.count || 0), 0);
             if (count > 0 && !shown) { shown = true; readyAt = now; clearTimeout(timeout); setReady(true);
               if (import.meta.env.DEV) console.info('Point cloud ready', variant.id, `${((performance.now() - started) / 1000).toFixed(2)}s to first points`); }
@@ -168,7 +195,7 @@ export default function PointCloudViewer({ dataset, onBack }) {
     start();
     return () => {
       active = false; controller.abort(); cancelAnimationFrame(frameId); clearTimeout(timeout);
-      observer?.disconnect(); controls?.dispose(); workers.forEach(worker => worker.terminate());
+      removePicking?.(); observer?.disconnect(); controls?.dispose(); workers.forEach(worker => worker.terminate());
       // Potree's root node has no parent and is skipped by its node dispose helper.
       cloud?.pcoGeometry.root.geometry?.dispose();
       cloud?.dispose(); renderer?.dispose(); renderer?.forceContextLoss(); container.replaceChildren(); viewer.current = null;
@@ -180,8 +207,9 @@ export default function PointCloudViewer({ dataset, onBack }) {
     <div className="terrestrialHeading"><button onClick={onBack}>← Back to Terrestrial Data</button><span className="badge info">3D Terrestrial Point Cloud</span></div>
     <section className="panel pointCloudPanel">
       <div className="terrestrialHeading"><div><p className="eyebrow">{dataset.display_name}</p><h1>{variant.name || variant.label}</h1></div><span className="badge neutral">Points: {(variant.points / 1e6).toFixed(1)}M</span></div>
-      <div className="pointCloudToolbar"><label>Point Cloud Detail<select value={variant.id} onChange={event => { setReady(false); setVariantId(event.target.value); }}>{variants.map(item => <option key={item.id} value={item.id}>{item.label} — {item.points / 1e6}M</option>)}</select></label><button disabled={!ready} onClick={() => viewer.current?.zoom(0.75)}>Zoom In</button><button disabled={!ready} onClick={() => viewer.current?.zoom(1.333333)}>Zoom Out</button><button disabled={!ready} onClick={() => viewer.current?.fit()}>Fit to Cloud</button><button disabled={!ready} onClick={() => viewer.current?.fit(true)}>Reset View</button><label>Point size<input aria-label="Point size" type="range" min="1" max="6" step="0.5" value={size} onChange={event => pointSize(Number(event.target.value))} disabled={!ready} /></label><output>{size}px</output><label>Color mode<select value={color} onChange={event => colorMode(event.target.value)} disabled={!ready}><option>RGB</option><option>Elevation</option></select></label></div>
-      <div className="pointCloudSurface"><div className="pointCloudCanvas" ref={host} />{!ready && !error && <div className="pointCloudOverlay" role="status">{status}</div>}{error && <div className="pointCloudOverlay" role="alert"><h2>Point cloud unavailable</h2><p>{error}</p><button onClick={() => setAttempt(value => value + 1)}>Retry Point Cloud</button></div>}</div>
+      <div className="pointCloudToolbar"><label>Point Cloud Detail<select disabled={stationEditing} value={variant.id} onChange={event => { setReady(false); setVariantId(event.target.value); }}>{variants.map(item => <option key={item.id} value={item.id}>{item.label} — {item.points / 1e6}M</option>)}</select></label><button disabled={!ready} onClick={() => viewer.current?.zoom(0.75)}>Zoom In</button><button disabled={!ready} onClick={() => viewer.current?.zoom(1.333333)}>Zoom Out</button><button disabled={!ready} onClick={() => viewer.current?.fit()}>Fit to Cloud</button><button disabled={!ready} onClick={() => viewer.current?.fit(true)}>Reset View</button><label>Point size<input aria-label="Point size" type="range" min="1" max="6" step="0.5" value={size} onChange={event => pointSize(Number(event.target.value))} disabled={!ready} /></label><output>{size}px</output><label>Color mode<select value={color} onChange={event => colorMode(event.target.value)} disabled={!ready}><option>RGB</option><option>Elevation</option></select></label></div>
+      <StationTools dataset={dataset} viewer={viewer} bridge={stationBridge} ready={ready} focusSetup={focusSetup} onOpenPanorama={onOpenPanorama} onEditing={setStationEditing} overlay={markers => markerHost ? createPortal(markers, markerHost) : null} />
+      <div className="pointCloudSurface"><div className="pointCloudCanvas" ref={host} /><div ref={setMarkerHost} />{!ready && !error && <div className="pointCloudOverlay" role="status">{status}</div>}{error && <div className="pointCloudOverlay" role="alert"><h2>Point cloud unavailable</h2><p>{error}</p><button onClick={() => setAttempt(value => value + 1)}>Retry Point Cloud</button></div>}</div>
       <div className="pointCloudFooter"><p>Left drag: orbit · Right drag / arrow keys: pan · Scroll or buttons: zoom · Touch: one finger orbit, two fingers pan/zoom</p><p role="status">{error ? 'Unable to load' : status}</p></div>
     </section>
   </main>;

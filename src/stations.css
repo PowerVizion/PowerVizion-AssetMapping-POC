@@ -1,0 +1,13 @@
+.stationPanel { border: 1px solid #395160; border-radius: 8px; padding: 14px; margin: 14px 0; background: #101b22; }
+.stationPanel h2,.stationPanel h3 { margin: 0; font-size: 16px; }
+.stationPanel p { font-size: 13px; color: #aec2cb; margin: 8px 0; }
+.stationPanel [role=alert] { color: #ffbc88; }
+.stationToolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.stationToolbar label { min-width: 150px; }
+.stationDraft,.stationDetails { border-top: 1px solid #395160; padding-top: 12px; margin-top: 12px; }
+.stationDraft output { display: block; color: #f7cd80; font-family: monospace; margin: 8px 0; }
+.stationMarkers { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.stationMarker { display: none; position: absolute; transform: translate(-50%,-50%); background: #142b3c; border: 2px solid #63c5ff; color: white; padding: 4px 7px; font-size: 12px; border-radius: 20px; pointer-events: auto; white-space: nowrap; box-shadow: 0 0 8px #000; }
+.stationMarker.highlightStation { background: #553a0b; border-color: #ffd06a; }
+.stationMarker.draftStation { background: #622052; border-color: #ff97e0; pointer-events: none; }
+.panoramaStationLink { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 0; font-size: 13px; }

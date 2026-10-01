@@ -1,0 +1,44 @@
+import {stationRequest} from './stationApi.js';
+import React, {useEffect,useRef,useState} from 'react';
+import {stationLocal,nearestStations} from './stationGeometry.js';
+import './stations.css';
+const API='http://127.0.0.1:4000/api';
+export function StationTools({dataset,viewer,bridge,ready,focusSetup,onOpenPanorama,overlay,onEditing}) {
+ const [stations,setStations]=useState(null),[catalog,setCatalog]=useState([]),[error,setError]=useState(''),[version,setVersion]=useState(0);
+ const [setup,setSetup]=useState(''),[selected,setSelected]=useState(focusSetup||''),[draft,setDraft]=useState(null),[busy,setBusy]=useState(false),[deleting,setDeleting]=useState(false);
+ const markerRefs=useRef(new Map());
+ const detailsRef=useRef(null);
+ useEffect(()=>{onEditing(Boolean(draft)||busy);},[Boolean(draft),busy,onEditing]);
+ useEffect(()=>{const controller=new AbortController();setError('');
+  Promise.all([stationRequest('/'+encodeURIComponent(dataset.dataset_id),{signal:controller.signal}),fetch(`${API}/terrestrial-datasets/${encodeURIComponent(dataset.dataset_id)}/panoramas`,{signal:controller.signal}).then(r=>{if(!r.ok)throw new Error('Setup catalog unavailable');return r.json();})]).then(([rows,items])=>{setStations(rows);setCatalog(items);}).catch(e=>{if(e.name!=='AbortError')setError(e.message);});return()=>controller.abort();
+ },[dataset.dataset_id,version]);
+ useEffect(()=>{if(ready&&focusSetup&&stations){const row=stations.find(item=>item.setup_id===focusSetup);if(row){setSelected(focusSetup);viewer.current?.focusStation(row);}}},[ready,focusSetup,stations]);
+ useEffect(()=>{setDraft(null);setDeleting(false);},[ready]);
+ const available=catalog.filter(item=>!stations?.some(row=>row.setup_id===String(item.setup_number).padStart(3,'0')));
+ const chosen=available.some(item=>String(item.setup_number).padStart(3,'0')===setup)?setup:(available[0]?String(available[0].setup_number).padStart(3,'0'):'');
+ const current=stations?.find(row=>row.setup_id===selected);
+ function focus(row){setSelected(row.setup_id);setDeleting(false);viewer.current?.focusStation(row);}
+ function begin(row) {setError('');setDeleting(false);setDraft(row?{...row,expected:row,picked:false}:{dataset_id:dataset.dataset_id,setup_id:chosen,panorama_file:available.find(item=>String(item.setup_number).padStart(3,'0')===chosen)?.filename,placement_method:'manual_3d',orientation_status:'unknown',notes:'',picked:false});}
+ bridge.current={
+  placing:Boolean(draft)&&!busy,
+  pick(point){if(!draft||busy)return;if(!point){setError('No visible cloud point at that location. Zoom in and click a rendered surface.');return;}setError('');setDraft({...draft,...point,picked:true});},
+  project(camera,center,width,height){
+    for(const row of [...(stations||[]),...(draft?.picked?[{...draft,setup_id:'draft'}]:[])]) {
+      const element=markerRefs.current.get(row.setup_id);if(!element)continue;
+      const point=stationLocal(row,center).project(camera);
+      element.style.display=point.z>=-1&&point.z<=1&&Math.abs(point.x)<=1&&Math.abs(point.y)<=1?'block':'none';
+      element.style.left=`${(point.x+1)*width/2}px`;element.style.top=`${(1-point.y)*height/2}px`;
+    }
+  }
+ };
+ async function save(){if(!draft?.picked)return;setBusy(true);setError('');try{const {picked,expected,...row}=draft;const saved=await stationRequest(expected?`/${encodeURIComponent(row.dataset_id)}/${row.setup_id}`:'',{method:expected?'PUT':'POST',body:JSON.stringify({...row,...(expected?{expected}:{})})});setStations(rows=>[...rows.filter(item=>item.setup_id!==saved.setup_id),saved]);setSelected(saved.setup_id);setDraft(null);}catch(e){setError(e.message);}finally{setBusy(false);}}
+ async function remove(){setBusy(true);setError('');try{await stationRequest(`/${encodeURIComponent(dataset.dataset_id)}/${current.setup_id}`,{method:'DELETE',body:JSON.stringify({expected:current})});setStations(rows=>rows.filter(row=>row.setup_id!==current.setup_id));setSelected('');setDeleting(false);}catch(e){setError(e.message);}finally{setBusy(false);}}
+ const markers=<div className="stationMarkers">{(stations||[]).map(row=><button key={row.setup_id} ref={el=>{if(el)markerRefs.current.set(row.setup_id,el);else markerRefs.current.delete(row.setup_id);}} className={`stationMarker ${selected===row.setup_id?'highlightStation':''}`} aria-label={`Scan station Setup ${row.setup_id}`} onClick={()=>{setSelected(row.setup_id);setDeleting(false);requestAnimationFrame(()=>detailsRef.current?.scrollIntoView({block:'nearest',behavior:'smooth'}));}} disabled={busy||Boolean(draft)}>◎ {row.setup_id}</button>)}{draft?.picked&&<span ref={el=>{if(el)markerRefs.current.set('draft',el);else markerRefs.current.delete('draft');}} className="stationMarker draftStation">✚ {draft.setup_id} · Unsaved</span>}</div>;
+ return <><section className="stationPanel" aria-label="Scan Stations"><div className="stationToolbar"><h2>Scan Stations</h2><span>{stations===null?'Loading…':`${stations.length} placed · ${catalog.length-stations.length} unplaced`}</span><button disabled={busy||Boolean(draft)} onClick={()=>setVersion(v=>v+1)}>Refresh Stations</button></div>
+ <p>Station Position: Manual / Provisional · Orientation: Unknown. Locations are not survey-certified.</p>
+ {error&&<p role="alert">{error}</p>}
+ {!draft&&<div className="stationToolbar"><label>Unplaced Setup<select value={chosen} onChange={e=>setSetup(e.target.value)} disabled={busy||stations===null}>{available.map(item=><option key={item.filename} value={String(item.setup_number).padStart(3,'0')}>Setup {String(item.setup_number).padStart(3,'0')}</option>)}</select></label><button disabled={!ready||!chosen||busy||stations===null} onClick={()=>begin()}>Place Scan Station</button>{stations?.length>0&&<label>Saved Station<select value={selected} onChange={e=>{const row=stations.find(item=>item.setup_id===e.target.value);if(row)focus(row);}} disabled={busy}><option value="">Select a station</option>{stations.map(row=><option key={row.setup_id} value={row.setup_id}>Setup {row.setup_id}</option>)}</select></label>}</div>}
+ {draft&&<div className="stationDraft"><h3>{draft.expected?'Edit':'Place'} Setup {draft.setup_id}</h3><p>Click a visible cloud point to choose a location. Drag to orbit; zoom for precise placement. Nothing is saved until Save Station.</p>{draft.picked&&<output>Native XYZ: X {draft.x.toFixed(3)} · Y {draft.y.toFixed(3)} · Z {draft.z.toFixed(3)}</output>}<label>Station notes<textarea value={draft.notes} disabled={busy} maxLength={2000} onChange={e=>setDraft({...draft,notes:e.target.value})}/></label><div className="stationToolbar"><button disabled={!draft.picked||busy||!ready} onClick={save}>{busy?'Saving…':'Save Station'}</button><button disabled={busy} onClick={()=>{setDraft(null);setError('');}}>Cancel</button></div></div>}
+ {current&&!draft&&<div className="stationDetails" ref={detailsRef}><h3>Setup {current.setup_id}</h3><p>Panorama: {current.panorama_file}</p><p>Placement: Manual 3D · Orientation: Unknown</p><p>Native XYZ: X {current.x.toFixed(3)} · Y {current.y.toFixed(3)} · Z {current.z.toFixed(3)}</p>{current.notes&&<p>{current.notes}</p>}<div className="stationToolbar"><button disabled={busy} onClick={()=>onOpenPanorama(current)}>Open Panorama</button><button disabled={busy||!ready} onClick={()=>begin(current)}>Edit Position</button><button disabled={busy} onClick={()=>setDeleting(true)}>Delete Station</button></div>{deleting&&<div role="alert"><p>Remove the saved placement for Setup {current.setup_id}? The panorama remains available.</p><button disabled={busy} onClick={remove}>Confirm Delete Station</button><button disabled={busy} onClick={()=>setDeleting(false)}>Cancel Delete</button></div>}{stations.length>1&&<div><h4>Nearby Stations (approximate)</h4>{nearestStations(current,stations).map(row=><button key={row.setup_id} onClick={()=>focus(row)}>Setup {row.setup_id} — {row.distance.toFixed(1)} m</button>)}</div>}</div>}
+ </section>{overlay(markers)}</>;
+}

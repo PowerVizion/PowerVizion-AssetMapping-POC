@@ -5,3 +5,12 @@ dist/
 data/*.sqlite
 data/*.sqlite-*
 npm-debug.log*
+
+# External Potree point data must never be committed
+**/octree.bin
+**/hierarchy.bin
+
+# Station CSV transaction/recovery files stay local
+data/terrestrial_stations.csv.lock
+data/terrestrial_stations.csv.*.tmp
+data/terrestrial_stations.csv.bak

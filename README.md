@@ -265,3 +265,61 @@ asset overlays remain usable if tiles are unavailable. Admin Review and Client
 View receive no survey layer. Export remains the final tab and its data is unchanged.
 
 Map configuration tests: `node --test src/surveyMap.test.js`.
+
+## Manual Scan / Panorama Stations
+
+The 3D viewer's Scan Stations panel places individual setups on actual visible
+cloud points. Choose an unplaced setup, select Place Scan Station, click a rendered
+surface, inspect the temporary marker/native XYZ, and explicitly Save Station or
+Cancel. Dragging still orbits; empty-space clicks do not invent a depth. Edit Position
+requires a new pick and explicit save. Delete Station asks for confirmation.
+Saved markers are labeled by setup; selecting one opens its detail card. The Saved
+Station selector focuses markers that are outside the current view.
+
+CSV source: `data/terrestrial_stations.csv`, initially header only:
+`dataset_id,setup_id,panorama_file,x,y,z,placement_method,orientation_status,notes`.
+Every row is `manual_3d` / `unknown`. No station positions are seeded or inferred.
+This is separate from asset associations and never writes to SQLite.
+
+Routes:
+- `GET /api/terrestrial-stations`: all saved stations.
+- `GET /api/terrestrial-stations/:datasetId`: saved stations for a configured dataset.
+- `POST /api/terrestrial-stations`: create one station with the CSV fields (XYZ JSON numbers).
+- `PUT /api/terrestrial-stations/:datasetId/:setupId`: replace coordinates/notes,
+  with all fields and `expected` containing the full previously read station.
+- `DELETE /api/terrestrial-stations/:datasetId/:setupId`: body `{ "expected": <previous station> }`.
+
+Creates/edits validate the configured dataset, exact setup/filename, real JPEG,
+finite numeric XYZ, fixed placement/orientation statuses and notes up to 2000 chars.
+Duplicates, stale updates and active locks return 409; invalid input returns 400.
+Reads of unknown datasets return 404. Obsolete stations can be deleted even when
+their panorama is no longer available. Same local UI origin and JSON are required
+for browser mutations. This remains the existing local admin POC, not a new auth system.
+
+Writes take an exclusive sibling lock, strictly parse the CSV, preserve header/BOM/
+newlines, quote notes, fsync a complete temporary file, save previous valid bytes
+atomically to `.bak`, then rename the new CSV in place. Invalid CSV is never replaced.
+Transaction/backup files are ignored by Git. After a crash, stop all POC API processes
+before inspecting the CSV, its `.bak`, and any stale `.lock`; restore only a verified
+backup and clear a stale lock manually. Do not edit CSV while the API is writing it.
+
+Picking examines decoded visible nodes once per click, within ten CSS pixels of the
+pointer, choosing the front point. Each node's world transform is applied; the
+viewer's survey-coordinate center is then added back. CSV stores the native/global
+XYZ at full decoded precision, not display pixels. Markers subtract the selected
+variant's center when drawn, so switching between 1M and 10M preserves coordinates.
+Point picking depends on current level of detail. The picked surface is only a manual
+proxy for a station location; it does not recover the Leica optical/scanner origin,
+scanner height, orientation, or an authoritative datum. Orientation stays unknown.
+Markers are projected overlay labels and may be visible through intervening cloud
+geometry. Their screen position is never persisted.
+
+Open Panorama selects the saved setup directly. Return to 3D Station is offered only
+for saved stations, opens the default detail, focuses about 20 native units from the
+station and highlights its label. There is no panorama yaw synchronization. Nearby
+Stations lists up to three saved neighbors by approximate Euclidean XYZ distance
+(in metres for this dataset); unsaved stations are never included.
+
+Tests: `node --test server/terrestrial-stations.test.js src/stationGeometry.test.js`.
+The temporary Setup 001 browser-verification record was removed after testing;
+the delivered station CSV remains header only.

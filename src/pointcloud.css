@@ -1,0 +1,14 @@
+.pointCloudPage { max-width: 1800px; margin: auto; }
+.pointCloudPanel { padding: 20px; min-width: 0; }
+.pointCloudPanel h1 { font-size: clamp(22px, 3vw, 34px); margin: 8px 0; overflow-wrap: anywhere; }
+.pointCloudToolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 16px 0; }
+.pointCloudToolbar label { min-width: 140px; }
+.pointCloudToolbar input { padding: 0; accent-color: #38d6bd; }
+.pointCloudSurface { position: relative; height: clamp(420px, 65vh, 900px); border: 1px solid #244047; border-radius: 8px; overflow: hidden; background: #070f14; }
+.pointCloudCanvas { width: 100%; height: 100%; }
+.pointCloudCanvas canvas { display: block; touch-action: none; }
+.pointCloudCanvas canvas:focus-visible { outline: 2px solid #38d6bd; outline-offset: -3px; }
+.pointCloudOverlay { position: absolute; inset: 0; background: rgba(7,15,20,.93); display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+.pointCloudOverlay h2, .pointCloudOverlay p { margin: 0; }
+.pointCloudFooter { color: #9db8be; font-size: 13px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+@media(max-width:600px) { .pointCloudPanel { padding: 12px; } }

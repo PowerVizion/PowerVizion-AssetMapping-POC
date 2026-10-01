@@ -1,4 +1,6 @@
+import { terrestrialStationsRouter } from './terrestrial-stations.js';
 import path from 'node:path';
+import { terrestrialPointCloudRouter } from './terrestrial-pointcloud.js';
 import { terrestrialEvidenceRouter } from './terrestrial-evidence.js';
 import { terrestrialPanoramaRouter } from './terrestrial-panoramas.js';
 import { readTerrestrialDatasets } from './terrestrial.js';
@@ -23,6 +25,9 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://127.0.0.1:5173');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  if (req.path.startsWith('/api/terrestrial-datasets/') && req.path.includes('/point-cloud/')) {
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Range');
+  }
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
@@ -76,6 +81,17 @@ app.use('/api/terrestrial-evidence', terrestrialEvidenceRouter({
   configPath: path.join(root, 'data', 'terrestrial_datasets.json'),
   getRoot: () => process.env.POWERVIZ_TERRESTRIAL_ROOT,
   assetExists: assetId => Boolean(get('SELECT id FROM asset_locations WHERE id = ?', [assetId]))
+}));
+
+app.use('/api/terrestrial-datasets', terrestrialPointCloudRouter({
+  configPath: path.join(root, 'data', 'terrestrial_datasets.json'),
+  getRoot: () => process.env.POWERVIZ_WEB_POINTCLOUD_ROOT
+}));
+
+app.use('/api/terrestrial-stations', terrestrialStationsRouter({
+  csvPath: path.join(root, 'data', 'terrestrial_stations.csv'),
+  configPath: path.join(root, 'data', 'terrestrial_datasets.json'),
+  getRoot: () => process.env.POWERVIZ_TERRESTRIAL_ROOT
 }));
 
 app.get('/api/summary', (req, res) => {

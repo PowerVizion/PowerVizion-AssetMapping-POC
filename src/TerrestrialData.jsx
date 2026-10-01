@@ -1,3 +1,4 @@
+import { PanoramaStationLink } from './PanoramaStationLink.jsx';
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Images, Minus, Plus, RotateCcw } from 'lucide-react';
 import './terrestrial.css';
@@ -17,6 +18,8 @@ export default function TerrestrialData({ initialTarget }) {
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [panoramaSetup, setPanoramaSetup] = useState(initialTarget?.setup_id || null);
+  const [focusStation, setFocusStation] = useState(null);
   const [cloudDataset, setCloudDataset] = useState(null);
   const [associations, setAssociations] = useState(null);
   const [associationError, setAssociationError] = useState('');
@@ -48,8 +51,8 @@ export default function TerrestrialData({ initialTarget }) {
     });
     return () => controller.abort();
   }, [attempt]);
-  if (cloudDataset) return <Suspense fallback={<main className="page"><p role="status">Loading 3D viewer…</p></main>}><PointCloudViewer dataset={cloudDataset} onBack={() => setCloudDataset(null)} /></Suspense>;
-  if (selected) return <PanoramaBrowser dataset={selected} initialSetup={initialTarget?.dataset_id === selected.dataset_id ? initialTarget.setup_id : null} onChanged={() => setAssociationVersion(value => value + 1)} onBack={() => { setSelected(null); setAssociationVersion(value => value + 1); }} />;
+  if (cloudDataset) return <Suspense fallback={<main className="page"><p role="status">Loading 3D viewer…</p></main>}><PointCloudViewer dataset={cloudDataset} focusSetup={focusStation} onOpenPanorama={row => { setPanoramaSetup(row.setup_id); setSelected(cloudDataset); setCloudDataset(null); }} onBack={() => { setCloudDataset(null); setFocusStation(null); }} /></Suspense>;
+  if (selected) return <PanoramaBrowser dataset={selected} initialSetup={panoramaSetup} onReturnToStation={row => { setFocusStation(row.setup_id); setCloudDataset(selected); setSelected(null); }} onChanged={() => setAssociationVersion(value => value + 1)} onBack={() => { setSelected(null); setAssociationVersion(value => value + 1); }} />;
   return <main className="page terrestrialPage">
     <section className="intro compact"><div><p className="eyebrow">Terrestrial evidence</p><h1>Terrestrial Data</h1><p>Explore scan datasets and high-resolution panoramas before associating evidence with assets.</p></div><span className="badge neutral">Admin Validation</span></section>
     {associationError && <div role="alert"><p>{associationError}</p><button onClick={() => setAssociationVersion(value => value + 1)}>Refresh Associations</button></div>}
@@ -67,13 +70,13 @@ export default function TerrestrialData({ initialTarget }) {
         <div className="terrestrialHeading"><div><p className="eyebrow">{dataset.dataset_id}</p><h2>{dataset.display_name}</h2></div><span className={`badge ${available ? 'good' : 'warn'}`}>Status: {available ? 'Available' : 'Missing'}</span></div>
         <dl className="terrestrialFacts">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? 'Unknown'}</dd></div>)}</dl>
         {local.panorama_count_matches_expected === false && <p role="status">Some expected panoramas are missing. Available images can still be browsed.</p>}
-        <div className="terrestrialFooter"><p>Manual associations are for admin validation. Point and setup counts are dataset metadata.</p>{(dataset.web_point_cloud || dataset.point_cloud_variants?.length) && <button onClick={() => setCloudDataset(dataset)}>Open 3D Point Cloud</button>}<button onClick={() => setSelected(dataset)}><Images size={18} />Browse Panoramas</button></div>
+        <div className="terrestrialFooter"><p>Manual associations are for admin validation. Point and setup counts are dataset metadata.</p>{(dataset.web_point_cloud || dataset.point_cloud_variants?.length) && <button onClick={() => setCloudDataset(dataset)}>Open 3D Point Cloud</button>}<button onClick={() => { setPanoramaSetup(null); setSelected(dataset); }}><Images size={18} />Browse Panoramas</button></div>
       </section>;
     })}
   </main>;
 }
 
-function PanoramaBrowser({ dataset, initialSetup, onChanged, onBack }) {
+function PanoramaBrowser({ dataset, initialSetup, onChanged, onBack, onReturnToStation }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -101,6 +104,7 @@ function PanoramaBrowser({ dataset, initialSetup, onChanged, onBack }) {
           <label>Setup<select value={index} onChange={event => setIndex(Number(event.target.value))}>{items.map((item, i) => <option key={item.filename} value={i}>Setup {String(item.setup_number).padStart(3, '0')} — {item.filename}</option>)}</select></label>
           <button disabled={index === items.length - 1} onClick={() => setIndex(value => value + 1)}>Next<ArrowRight size={16} /></button>
         </div>
+        <PanoramaStationLink datasetId={dataset.dataset_id} setupId={String(current.setup_number).padStart(3, '0')} onReturn={onReturnToStation} />
         <AssetAssociation key={`${dataset.dataset_id}:${current.filename}`} datasetId={dataset.dataset_id} panorama={current} onChanged={onChanged} />
         <PanoramaImage key={current.filename} filename={current.filename} src={`${API}/${encodeURIComponent(dataset.dataset_id)}/panoramas/${encodeURIComponent(current.filename)}`} />
       </>}
