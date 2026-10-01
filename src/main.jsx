@@ -8,6 +8,7 @@ import './styles.css';
 import TerrestrialData from './TerrestrialData.jsx';
 import { SurveyPolygon, useMappedSurveys } from './SurveyMap.jsx';
 import { mapPositions } from './surveyMap.js';
+import { prepareLeafletLifecycle } from './leafletLifecycle.js';
 import { AdminTerrestrialEvidence } from './TerrestrialEvidence.jsx';
 
 const emptyForm = {
@@ -432,7 +433,7 @@ function InteractiveAssetMap({ assets, selectedId, setSelectedId, className = ''
           Basemap tiles are unavailable in this environment. Markers remain interactive; use QA Canvas View for a fully offline layout.
         </div>
       )}
-      <MapContainer
+      <MapContainer whenReady={prepareLeafletLifecycle}
         center={centerAsset ? [Number(centerAsset.latitude), Number(centerAsset.longitude)] : surveys[0].map.footprint[0]}
         zoom={14}
         scrollWheelZoom
