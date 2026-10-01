@@ -104,7 +104,7 @@ function PanoramaBrowser({ dataset, initialSetup, onChanged, onBack, onReturnToS
           <label>Setup<select value={index} onChange={event => setIndex(Number(event.target.value))}>{items.map((item, i) => <option key={item.filename} value={i}>Setup {String(item.setup_number).padStart(3, '0')} — {item.filename}</option>)}</select></label>
           <button disabled={index === items.length - 1} onClick={() => setIndex(value => value + 1)}>Next<ArrowRight size={16} /></button>
         </div>
-        <PanoramaStationLink datasetId={dataset.dataset_id} setupId={String(current.setup_number).padStart(3, '0')} onReturn={onReturnToStation} />
+        <PanoramaStationLink datasetId={dataset.dataset_id} setupId={String(current.setup_number).padStart(3, '0')} onReturn={onReturnToStation} onNavigate={row => { const target = items.findIndex(item => String(item.setup_number).padStart(3, '0') === row.setup_id && item.filename === row.panorama_file); if (target >= 0) setIndex(target); }} />
         <AssetAssociation key={`${dataset.dataset_id}:${current.filename}`} datasetId={dataset.dataset_id} panorama={current} onChanged={onChanged} />
         <PanoramaImage key={current.filename} filename={current.filename} src={`${API}/${encodeURIComponent(dataset.dataset_id)}/panoramas/${encodeURIComponent(current.filename)}`} />
       </>}

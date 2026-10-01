@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { StationTools } from './StationTools.jsx';
 import { pickStationPoint, stationLocal } from './stationGeometry.js';
 import React, { useEffect, useRef, useState } from 'react';
-import { Box3, Vector3, PerspectiveCamera, Scene, WebGLRenderer, Color, Sphere, InterleavedBuffer, InterleavedBufferAttribute } from 'three';
+import { BufferGeometry, LineBasicMaterial, LineSegments, Box3, Vector3, PerspectiveCamera, Scene, WebGLRenderer, Color, Sphere, InterleavedBuffer, InterleavedBufferAttribute } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Potree, PointColorType, PointSizeType, PointShape, PointCloudMaterial } from 'potree-core';
 import './pointcloud.css';
@@ -24,7 +24,8 @@ export default function PointCloudViewer({ dataset, onBack, onOpenPanorama, focu
   const [size, setSize] = useState(2);
   const [color, setColor] = useState('RGB');
   useEffect(() => {
-    let active = true, frameId, cloud, renderer, controls, observer, timeout, removePicking;
+    let active = true, frameId, cloud, renderer, controls, observer, timeout, removePicking, connectionLines;
+    let flight=null;
     const controller = new AbortController();
     const workers = new Set();
     const container = host.current;
@@ -115,6 +116,7 @@ export default function PointCloudViewer({ dataset, onBack, onOpenPanorama, focu
         Object.values(pool.workers).flat().forEach(worker => workers.add(worker));
         const radius = Math.max(bounds.getBoundingSphere(new Sphere()).radius, 1);
         function fit(reset = false) {
+          flight=null;
           const direction = reset ? new Vector3(0.9, -1, 0.75).normalize() : camera.position.clone().sub(controls.target).normalize();
           if (direction.lengthSq() === 0) direction.set(0.9, -1, 0.75).normalize();
           const vertical = camera.fov * Math.PI / 360;
@@ -131,6 +133,7 @@ export default function PointCloudViewer({ dataset, onBack, onOpenPanorama, focu
         }
         observer = new ResizeObserver(resize); observer.observe(container); resize(); fit(true);
         function zoom(factor) {
+          flight=null;
           const direction = camera.position.clone().sub(controls.target);
           const distance = Math.max(controls.minDistance, Math.min(controls.maxDistance, direction.length() * factor));
           camera.position.copy(controls.target).add(direction.setLength(distance));
@@ -140,8 +143,16 @@ export default function PointCloudViewer({ dataset, onBack, onOpenPanorama, focu
           const point = stationLocal(row, center);
           const direction = camera.position.clone().sub(controls.target).normalize();
           if (!direction.lengthSq()) direction.set(0.9,-1,0.75).normalize();
-          controls.target.copy(point); camera.position.copy(point).addScaledVector(direction, 20); controls.update();
+          flight={started:performance.now(),from:camera.position.clone(),targetFrom:controls.target.clone(),to:point.clone().addScaledVector(direction,20),target:point};
+          if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){controls.target.copy(point);camera.position.copy(flight.to);flight=null;controls.update();}
         }
+        connectionLines=new LineSegments(new BufferGeometry(),new LineBasicMaterial({color:0x73b7ce,transparent:true,opacity:0.5,depthWrite:false}));
+        scene.add(connectionLines);
+        function setStationConnections(row,neighbors) {
+          const points=row?neighbors.flatMap(other=>[stationLocal(row,center),stationLocal(other,center)]):[];
+          connectionLines.geometry.dispose();connectionLines.geometry=new BufferGeometry().setFromPoints(points);connectionLines.visible=points.length>0;
+        }
+        controls.addEventListener('start',()=>{flight=null;});
         let pointerStart;
         const down = event => { if(event.button===0) pointerStart={x:event.clientX,y:event.clientY}; };
         const up = event => {
@@ -156,11 +167,12 @@ export default function PointCloudViewer({ dataset, onBack, onOpenPanorama, focu
         renderer.domElement.addEventListener('pointerup',up);
         renderer.domElement.addEventListener('pointercancel',cancel);
         removePicking=()=>{renderer.domElement.removeEventListener('pointerdown',down);renderer.domElement.removeEventListener('pointerup',up);renderer.domElement.removeEventListener('pointercancel',cancel);};
-        viewer.current = { cloud, fit, zoom, camera, controls, focusStation };
+        viewer.current = { cloud, fit, zoom, camera, controls, focusStation, setStationConnections };
         let lastStatus = 0, shown = false, readyAt = 0, sampledFrames = 0, reported = false;
         function render(now) {
           if (!active || controller.signal.aborted) return;
           try {
+            if(flight){const t=Math.min(1,(now-flight.started)/650),ease=t*t*(3-2*t);camera.position.lerpVectors(flight.from,flight.to,ease);controls.target.lerpVectors(flight.targetFrom,flight.target,ease);if(t===1)flight=null;}
             controls.update(); scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
             const update = potree.updatePointClouds([cloud], camera, renderer);
             if (update.nodeLoadFailed) throw new Error('A point-cloud node failed to load. Retry the dataset.');
@@ -195,6 +207,7 @@ export default function PointCloudViewer({ dataset, onBack, onOpenPanorama, focu
     start();
     return () => {
       active = false; controller.abort(); cancelAnimationFrame(frameId); clearTimeout(timeout);
+      connectionLines?.geometry.dispose();connectionLines?.material.dispose();
       removePicking?.(); observer?.disconnect(); controls?.dispose(); workers.forEach(worker => worker.terminate());
       // Potree's root node has no parent and is skipped by its node dispose helper.
       cloud?.pcoGeometry.root.geometry?.dispose();

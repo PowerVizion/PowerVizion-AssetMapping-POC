@@ -1,8 +1,24 @@
 import React, {useEffect,useState} from 'react';
 import {stationRequest} from './stationApi.js';
+import {nearestStations} from './stationNeighbors.js';
 import './stations.css';
-export function PanoramaStationLink({datasetId,setupId,onReturn}) {
- const [station,setStation]=useState(null),[error,setError]=useState('');
- useEffect(()=>{const controller=new AbortController();setStation(null);setError('');stationRequest('/'+encodeURIComponent(datasetId),{signal:controller.signal}).then(rows=>setStation(rows.find(row=>row.setup_id===setupId))).catch(e=>{if(e.name!=='AbortError')setError('Station location could not be checked.');});return()=>controller.abort();},[datasetId,setupId]);
- return <div className="panoramaStationLink">{station && <><span>Station Position: Manual / Provisional · Orientation: Unknown</span><button onClick={()=>onReturn(station)}>Return to 3D Station</button></>}{error&&<p role="status">{error}</p>}</div>;
+export function PanoramaStationLink({datasetId,setupId,onReturn,onNavigate}) {
+ const [result,setResult]=useState(null),[error,setError]=useState(''),[version,setVersion]=useState(0);
+ useEffect(()=>{
+  const controller=new AbortController();setResult(null);setError('');
+  stationRequest('/'+encodeURIComponent(datasetId),{signal:controller.signal})
+   .then(rows=>{if(!controller.signal.aborted)setResult({datasetId,setupId,rows});})
+   .catch(e=>{if(e.name!=='AbortError')setError('Station locations could not be checked.');});
+  return()=>controller.abort();
+ },[datasetId,setupId,version]);
+ const rows=result?.datasetId===datasetId&&result?.setupId===setupId?result.rows:null;
+ const station=rows?.find(row=>row.setup_id===setupId);
+ const neighbors=station?nearestStations(station,rows):[];
+ return <section className="stationPanel" aria-label="Panorama station navigation">
+  {error?<p role="alert">{error} <button onClick={()=>setVersion(v=>v+1)}>Retry Stations</button></p>:!rows?<p role="status">Loading station locations…</p>:!station?<p>No 3D station position assigned.</p>:<>
+   <div className="panoramaStationLink"><span>Station Position: Manual / Provisional · Orientation: Unknown</span><button onClick={()=>onReturn(station)}>Return to 3D Station</button></div>
+   <h3>Nearby Stations</h3><p>Approximate XYZ distance between saved provisional positions.</p>
+   {neighbors.length?<ul className="stationNeighbors">{neighbors.map(row=><li key={row.setup_id}><span>Setup {row.setup_id}</span><span>{row.distance.toFixed(1)} m</span><button aria-label={'Go to Setup '+row.setup_id} onClick={()=>onNavigate(row)}>Go</button></li>)}</ul>:<p>No other saved stations nearby.</p>}
+  </>}
+ </section>;
 }

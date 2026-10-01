@@ -16,4 +16,4 @@ export function pickStationPoint(cloud,camera,center,pixel,width,height) {
   }
   return best ? stationGlobal(best,center) : null;
 }
-export function nearestStations(row,stations) {return stations.filter(item=>item.setup_id!==row.setup_id).map(item=>({...item,distance:Math.hypot(item.x-row.x,item.y-row.y,item.z-row.z)})).sort((a,b)=>a.distance-b.distance).slice(0,3);}
+export { nearestStations } from './stationNeighbors.js';

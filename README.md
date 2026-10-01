@@ -321,5 +321,17 @@ Stations lists up to three saved neighbors by approximate Euclidean XYZ distance
 (in metres for this dataset); unsaved stations are never included.
 
 Tests: `node --test server/terrestrial-stations.test.js src/stationGeometry.test.js`.
-The temporary Setup 001 browser-verification record was removed after testing;
-the delivered station CSV remains header only.
+The first station milestone was delivered with a header-only CSV; subsequent manual placements belong to the user.
+
+
+### Saved-station spatial navigation
+
+Nearby Stations derives up to three same-dataset neighbors dynamically from saved finite native XYZ using Euclidean distance. Results are sorted by distance (setup ID only breaks ties). No relationship file is created. Unplaced panoramas show "No 3D station position assigned." A placed panorama with no other saved stations shows an empty-neighbor message.
+
+Panorama Go changes the current setup and its evidence/image controls; station data reloads for each setup. Return to 3D always uses that current saved row, including after multiple nearby hops. Failed station reads offer Retry Stations.
+
+The 3D selected-station card provides Focus Station and nearby buttons. Focusing interpolates camera/target over 650 ms, highlights the destination and keeps the panorama closed. Orbit input, zoom and fit/reset interrupt travel. Reduced-motion preferences use immediate focus. Show Station Connections defaults off and draws at most three native-coordinate line segments from the selected station, rebased with the cloud. Geometry/materials are disposed with the viewer and rebuilt after edits/deletions. Connections are straight spatial relationships, not safe walking routes, and may be obscured by cloud geometry.
+
+All positions/distances remain manual/provisional; units assume the dataset's metre-based native coordinates. No compass arrows, yaw synchronization, scanner-origin recovery or survey certification is implied. Other-window edits appear after Refresh Stations or the next panorama hop; there is no live push synchronization.
+
+Navigation regression tests: `node --test src/stationNeighbors.test.js src/stationGeometry.test.js`. Browser verification uses the existing Setup 001 plus two temporary placements picked from the real cloud; temporary records are removed afterward.
