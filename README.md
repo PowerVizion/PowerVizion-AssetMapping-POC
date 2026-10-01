@@ -335,3 +335,38 @@ The 3D selected-station card provides Focus Station and nearby buttons. Focusing
 All positions/distances remain manual/provisional; units assume the dataset's metre-based native coordinates. No compass arrows, yaw synchronization, scanner-origin recovery or survey certification is implied. Other-window edits appear after Refresh Stations or the next panorama hop; there is no live push synchronization.
 
 Navigation regression tests: `node --test src/stationNeighbors.test.js src/stationGeometry.test.js`. Browser verification uses the existing Setup 001 plus two temporary placements picked from the real cloud; temporary records are removed afterward.
+
+
+### Walk / Fly and panorama context
+
+Navigation Mode retains Orbit and adds free flight. Enter Walk / Fly (or Resume Walk) explicitly focuses the canvas. WASD move relative to camera look, Q/E move along native Z, Shift temporarily triples speed. Slow/Normal/Fast are 1/5/20 native metres per second, using elapsed frame time and normalized combined movement. Long frames are capped at 100 ms to avoid a jump after suspension.
+
+Mouse look uses left-button drag with temporary pointer capture, not pointer lock. Release the button to release capture; Escape pauses movement. Canvas/window blur and page hiding clear held keys and capture. Clicking a UI control pauses flight; Resume Walk reactivates it. Keyboard events are confined to the canvas, so forms remain usable. Drag-to-look clamps pitch near the poles and uses the survey Z-up axis. No gravity, collision, eye height, walking paths or pose inference is added.
+
+Point Cloud / View Panorama switching keeps an in-memory per-dataset React snapshot of native camera position/target, variant, color, point size, navigation mode, speed, selected station and connection toggle. Returning to the same station restores the prior camera without fitting; returning from a different nearby panorama highlights/focuses that current station while preserving display/navigation settings. Flight always resumes paused until an explicit Resume Walk. Snapshots are not written to CSV, SQLite or browser storage, and are lost on page reload or leaving the terrestrial workspace. Source station coordinates remain in terrestrial_stations.csv. Panorama heading is independent; orientation remains unknown.
+
+Regression tests include `node --test src/flyNavigation.test.js` for movement, elapsed-time independence, look, native camera restoration and input release.
+
+Station placement/edit mode switches to Orbit so the existing placement navigation stays available. Releasing a mouse-look drag keeps any held movement keys active; Escape or focus loss clears both.
+
+
+### Local 360-degree panorama viewer
+
+360 View is the default; Flat Image retains the original zoom/pan inspection viewer. The existing restricted JPEG routes supply the original 4096x2048 image; nothing is copied into Git. Three.js renders one sRGB texture inside an inverted sphere using a centered perspective camera. Drag or arrow keys look around, wheel/buttons change vertical FOV (35–100 degrees), Reset View returns to yaw/pitch zero and 75-degree FOV. Yaw wraps; pitch clamps to ±85 degrees. Zero is an arbitrary image direction, never north or Leica-derived orientation.
+
+Per-image yaw/pitch/FOV stays in a React ref owned by the terrestrial workspace, including a point-cloud round trip, with no disk/SQLite/browser-storage writes. Existing 3D snapshots and current-panorama station selection are retained. Enter Fullscreen uses the browser API on the panorama experience container so setup navigation, saved-neighbor links, Point Cloud and Flat Image remain available. Escape exits normally; unsupported/denied fullscreen shows a message. Unplaced setups are labelled Not assigned. Saved station positions remain Manual / Provisional, orientation Unknown.
+
+Only the current JPEG is fetched. Requests abort on changes; late decoded bitmaps close without rendering. Geometry, texture, material, bitmap, renderer, observers, capture and event listeners are cleaned up on setup changes or exit. Rendering is on demand (drag, zoom, resize, load), avoiding continuous idle GPU work. Point-cloud rendering is unmounted while viewing panoramas. Prefetch is intentionally omitted. Missing/invalid images and WebGL errors offer Retry 360 View and Flat Image. Devices unable to accept the full 4096-wide texture use the fallback instead of silently downscaling it.
+
+Local development CORS and terrestrial mutation origin checks share the exact allowlist http://127.0.0.1:5173 and http://localhost:5173. Responses vary by Origin; no wildcard or credential access is added. Existing same-origin range streaming remains available.
+
+Additional tests: `node --test src/panoramaView.test.js server/dev-origin.test.js`. Fullscreen/browser GPU behavior requires a manual check on the target device.
+
+### Ground Walk and Real World
+The point-cloud navigation modes are Orbit, Ground Walk and Fly. Ground Walk uses horizontal WASD movement, drag-look, Shift acceleration and a manual level plane. Set Ground Here treats the current camera's native Z as ground and raises the eye by 1.5/1.7/1.9 m (default 1.7). Fly to a suitable reference elevation before setting it. Return to Ground retains X/Y and look direction and returns to that saved plane. Fit/Reset switches Ground Walk to Orbit for a useful overview; the walking reference remains available. This is not terrain detection, gravity, collision handling or survey-certified positioning.
+
+POINT CLOUD / REAL WORLD switches between Potree and captured Leica panorama imagery. The spatial Real World action uses selected saved XYZ only; nearest saved station distance is full Euclidean XYZ, recomputed four times per second from the native camera position. A marker within 10 m receives a subtle highlight. No panorama opens or camera moves automatically. Unplaced panoramas remain browsable without spatial claims.
+
+Native camera state, mode, speed, ground Z, eye height, cloud detail, color, point size and connection setting remain in memory within Terrestrial Data. Returning from a different placed panorama selects that current station; Ground Walk/Fly repositions nearby while retaining look direction, with Ground Walk constrained to its saved plane. Resume Ground Walk explicitly enters that mode. Orientation remains unknown and independent of the photograph. Real-world station records are not filtered by placement method, allowing future Leica-derived positions; no orientation support is inferred. No SQLite or CSV changes are made by navigation.
+
+If Resume Ground Walk is chosen from a saved panorama before any walking plane exists, its saved provisional station Z is used as the initial manual reference. This is disclosed beside the action; it is not a detected or certified ground surface.

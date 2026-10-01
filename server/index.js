@@ -1,3 +1,4 @@
+import {devCors} from './dev-origin.js';
 import { terrestrialStationsRouter } from './terrestrial-stations.js';
 import path from 'node:path';
 import { terrestrialPointCloudRouter } from './terrestrial-pointcloud.js';
@@ -21,16 +22,7 @@ const root = path.resolve(__dirname, '..');
 const mediaRoot = path.join(root, 'data');
 
 app.use(express.json({ limit: '2mb' }));
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://127.0.0.1:5173');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  if (req.path.startsWith('/api/terrestrial-datasets/') && req.path.includes('/point-cloud/')) {
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Range');
-  }
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  next();
-});
+app.use(devCors);
 app.use('/media', express.static(mediaRoot));
 
 const hasS3 = Boolean(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.S3_BUCKET);

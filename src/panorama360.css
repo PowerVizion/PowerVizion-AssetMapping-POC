@@ -1,0 +1,16 @@
+.panoramaExperience {background:#101b22;border:1px solid #395160;border-radius:8px;padding:14px;}
+.panoramaModeBar {display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0;}
+.panoramaModeBar button[aria-pressed=true] {border-color:#61d8c7;background:#163a3d;}
+.panorama360Surface {position:relative;height:clamp(360px,65vh,850px);border:1px solid #395160;border-radius:8px;overflow:hidden;background:#101b22;}
+.panorama360Canvas {position:absolute;inset:0;}.panorama360Canvas canvas {display:block;width:100%;height:100%;touch-action:none;cursor:grab;}.panorama360Canvas canvas:active {cursor:grabbing;}
+.panorama360Hud {position:absolute;left:12px;bottom:12px;pointer-events:none;display:grid;gap:4px;padding:10px;background:#071117df;color:#c6d8df;border-radius:6px;font-size:12px;}
+.panorama360Hud strong {color:#61d8c7;}.panorama360Message {position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#101b22e8;padding:25px;text-align:center;}
+.panoramaExperience:fullscreen {width:100vw;height:100vh;overflow:auto;border-radius:0;box-sizing:border-box;padding:12px 20px;}
+.panoramaExperience:fullscreen .panorama360Surface {height:calc(100vh - 300px);min-height:300px;}
+.panoramaExperience:fullscreen .stationPanel {padding:8px;margin:8px 0;}.panoramaExperience:fullscreen .stationNeighbors {display:flex;max-width:none;flex-wrap:wrap;gap:18px;}.panoramaExperience:fullscreen .stationPanel p {margin:4px 0;}
+
+.panoramaExperience:fullscreen {display:flex;flex-direction:column;gap:6px;}
+.panoramaExperience:fullscreen>.terrestrialHeading {flex:none;margin:0;}.panoramaExperience:fullscreen h1 {font-size:22px;margin:0;}.panoramaExperience:fullscreen .terrestrialFilename {margin:4px 0;}
+.panoramaExperience:fullscreen .terrestrialNavigation {margin:0;}.panoramaExperience:fullscreen .panoramaModeBar {margin:0;}
+.panoramaExperience:fullscreen .panorama360 {flex:1;min-height:240px;display:flex;flex-direction:column;}
+.panoramaExperience:fullscreen .panorama360Surface {flex:1;height:auto;min-height:200px;}.panoramaExperience:fullscreen .terrestrialZoom {margin:6px 0;}.panoramaExperience:fullscreen .terrestrialHint {margin:4px 0;}

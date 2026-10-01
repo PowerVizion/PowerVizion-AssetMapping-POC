@@ -1040,7 +1040,8 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
     <main className="reviewLayout">
       <AssetList assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} />
       <div className="reviewMain">
-        {detail && (
+        {(!detail || !Array.isArray(detail.detections) || detail.asset?.id !== selectedId) && <p role="status">Loading asset review…</p>}
+        {detail && Array.isArray(detail.detections) && detail.asset?.id === selectedId && (
           <>
             <section className="assetHeader panel">
               <div>

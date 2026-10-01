@@ -1,9 +1,12 @@
+import {returnToPointCloud} from './groundNavigation.js';
 import { PanoramaStationLink } from './PanoramaStationLink.jsx';
-import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Images, Minus, Plus, RotateCcw } from 'lucide-react';
 import './terrestrial.css';
+import './panorama360.css';
 import { AssetAssociation, evidenceRequest } from './TerrestrialEvidence.jsx';
 
+const Panorama360 = lazy(() => import('./Panorama360.jsx'));
 const PointCloudViewer = lazy(() => import('./PointCloudViewer.jsx'));
 
 const API = 'http://127.0.0.1:4000/api/terrestrial-datasets';
@@ -21,6 +24,8 @@ export default function TerrestrialData({ initialTarget }) {
   const [panoramaSetup, setPanoramaSetup] = useState(initialTarget?.setup_id || null);
   const [focusStation, setFocusStation] = useState(null);
   const [cloudDataset, setCloudDataset] = useState(null);
+  const [viewerStates,setViewerStates]=useState({});
+  const panoramaViews=useRef(new Map());
   const [associations, setAssociations] = useState(null);
   const [associationError, setAssociationError] = useState('');
   const [associationVersion, setAssociationVersion] = useState(0);
@@ -51,8 +56,8 @@ export default function TerrestrialData({ initialTarget }) {
     });
     return () => controller.abort();
   }, [attempt]);
-  if (cloudDataset) return <Suspense fallback={<main className="page"><p role="status">Loading 3D viewer…</p></main>}><PointCloudViewer dataset={cloudDataset} focusSetup={focusStation} onOpenPanorama={row => { setPanoramaSetup(row.setup_id); setSelected(cloudDataset); setCloudDataset(null); }} onBack={() => { setCloudDataset(null); setFocusStation(null); }} /></Suspense>;
-  if (selected) return <PanoramaBrowser dataset={selected} initialSetup={panoramaSetup} onReturnToStation={row => { setFocusStation(row.setup_id); setCloudDataset(selected); setSelected(null); }} onChanged={() => setAssociationVersion(value => value + 1)} onBack={() => { setSelected(null); setAssociationVersion(value => value + 1); }} />;
+  if (cloudDataset) return <Suspense fallback={<main className="page"><p role="status">Loading 3D viewer…</p></main>}><PointCloudViewer resumeState={viewerStates[cloudDataset.dataset_id]} onSaveState={state=>setViewerStates(previous=>({...previous,[cloudDataset.dataset_id]:state}))} dataset={cloudDataset} focusSetup={focusStation} onOpenPanorama={row => { setPanoramaSetup(row.setup_id); setSelected(cloudDataset); setCloudDataset(null); }} onBack={() => { setCloudDataset(null); setFocusStation(null); }} /></Suspense>;
+  if (selected) return <PanoramaBrowser panoramaViews={panoramaViews} dataset={selected} initialSetup={panoramaSetup} onReturnToStation={(row,resumeGround=false) => { setViewerStates(previous=>({...previous,[selected.dataset_id]:returnToPointCloud(previous[selected.dataset_id],row,resumeGround)}));setFocusStation(row?.setup_id||null); setCloudDataset(selected); setSelected(null); }} onChanged={() => setAssociationVersion(value => value + 1)} onBack={() => { setSelected(null); setAssociationVersion(value => value + 1); }} />;
   return <main className="page terrestrialPage">
     <section className="intro compact"><div><p className="eyebrow">Terrestrial evidence</p><h1>Terrestrial Data</h1><p>Explore scan datasets and high-resolution panoramas before associating evidence with assets.</p></div><span className="badge neutral">Admin Validation</span></section>
     {associationError && <div role="alert"><p>{associationError}</p><button onClick={() => setAssociationVersion(value => value + 1)}>Refresh Associations</button></div>}
@@ -76,11 +81,19 @@ export default function TerrestrialData({ initialTarget }) {
   </main>;
 }
 
-function PanoramaBrowser({ dataset, initialSetup, onChanged, onBack, onReturnToStation }) {
+function PanoramaBrowser({ dataset, initialSetup, onChanged, onBack, onReturnToStation, panoramaViews }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [index, setIndex] = useState(initialSetup ? Number(initialSetup) - 1 : 0);
+  const [viewMode,setViewMode]=useState('360');
+  const [stationStatus,setStationStatus]=useState(null);
+  const stationChanged=useCallback(value=>setStationStatus(value),[]);
+  const fullscreenHost=useRef(null);
+  const [fullscreen,setFullscreen]=useState(false),[fullscreenError,setFullscreenError]=useState('');
+  useEffect(()=>{const changed=()=>setFullscreen(document.fullscreenElement===fullscreenHost.current);const escape=e=>{if(e.key==='Escape'&&document.fullscreenElement===fullscreenHost.current)document.exitFullscreen().catch(()=>{});};document.addEventListener('fullscreenchange',changed);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('fullscreenchange',changed);document.removeEventListener('keydown',escape);};},[]);
+  async function toggleFullscreen(){try{setFullscreenError('');if(document.fullscreenElement===fullscreenHost.current)await document.exitFullscreen();else await fullscreenHost.current.requestFullscreen();}catch{setFullscreenError('Fullscreen is unavailable in this browser. You can continue in the normal viewer.');}}
+
   useEffect(() => {
     const controller = new AbortController();
     setError('');
@@ -98,15 +111,17 @@ function PanoramaBrowser({ dataset, initialSetup, onChanged, onBack, onReturnToS
     <section className="panel terrestrialCard">
       <p className="eyebrow">{dataset.display_name}</p>
       {error ? <div role="alert"><p>{error}</p><button onClick={() => setAttempt(value => value + 1)}>Retry</button></div> : !current ? <p role="status">Loading panoramas…</p> : <>
-        <div className="terrestrialHeading"><div><h1>Setup {String(current.setup_number).padStart(3, '0')}</h1><p className="terrestrialFilename">{current.filename}</p></div></div>
+        <section className="panoramaExperience" ref={fullscreenHost}><div className="terrestrialHeading"><div><h1>Setup {String(current.setup_number).padStart(3, '0')}</h1><p className="terrestrialFilename">{current.filename}</p></div></div>
         <div className="terrestrialNavigation">
           <button disabled={index === 0} onClick={() => setIndex(value => value - 1)}><ArrowLeft size={16} />Previous</button>
           <label>Setup<select value={index} onChange={event => setIndex(Number(event.target.value))}>{items.map((item, i) => <option key={item.filename} value={i}>Setup {String(item.setup_number).padStart(3, '0')} — {item.filename}</option>)}</select></label>
           <button disabled={index === items.length - 1} onClick={() => setIndex(value => value + 1)}>Next<ArrowRight size={16} /></button>
         </div>
-        <PanoramaStationLink datasetId={dataset.dataset_id} setupId={String(current.setup_number).padStart(3, '0')} onReturn={onReturnToStation} onNavigate={row => { const target = items.findIndex(item => String(item.setup_number).padStart(3, '0') === row.setup_id && item.filename === row.panorama_file); if (target >= 0) setIndex(target); }} />
-        <AssetAssociation key={`${dataset.dataset_id}:${current.filename}`} datasetId={dataset.dataset_id} panorama={current} onChanged={onChanged} />
-        <PanoramaImage key={current.filename} filename={current.filename} src={`${API}/${encodeURIComponent(dataset.dataset_id)}/panoramas/${encodeURIComponent(current.filename)}`} />
+        <PanoramaStationLink onStationState={stationChanged} datasetId={dataset.dataset_id} setupId={String(current.setup_number).padStart(3, '0')} onReturn={onReturnToStation} onNavigate={row => { const target = items.findIndex(item => String(item.setup_number).padStart(3, '0') === row.setup_id && item.filename === row.panorama_file); if (target >= 0) setIndex(target); }} />
+        <div className="panoramaModeBar"><button aria-pressed={viewMode==='360'} onClick={()=>setViewMode('360')}>360 View</button><button aria-pressed={viewMode==='flat'} onClick={()=>setViewMode('flat')}>Flat Image</button>{document.fullscreenEnabled&&<button onClick={toggleFullscreen}>{fullscreen?'Exit Fullscreen':'Enter Fullscreen'}</button>}</div>
+        {fullscreenError&&<p role="status">{fullscreenError}</p>}
+        {viewMode==='360'?<Suspense fallback={<p role="status">Loading 360 viewer…</p>}><Panorama360 key={current.filename} setupId={String(current.setup_number).padStart(3,'0')} filename={current.filename} memory={panoramaViews} positionStatus={stationStatus?.setupId===String(current.setup_number).padStart(3,'0')?stationStatus.position:'Checking saved position…'} src={`${API}/${encodeURIComponent(dataset.dataset_id)}/panoramas/${encodeURIComponent(current.filename)}`}/></Suspense>:<PanoramaImage key={current.filename} filename={current.filename} src={`${API}/${encodeURIComponent(dataset.dataset_id)}/panoramas/${encodeURIComponent(current.filename)}`}/>}
+        </section><AssetAssociation key={`${dataset.dataset_id}:${current.filename}`} datasetId={dataset.dataset_id} panorama={current} onChanged={onChanged} />
       </>}
     </section>
   </main>;

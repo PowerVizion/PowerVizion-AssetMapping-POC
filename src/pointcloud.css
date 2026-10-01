@@ -12,3 +12,8 @@
 .pointCloudOverlay h2, .pointCloudOverlay p { margin: 0; }
 .pointCloudFooter { color: #9db8be; font-size: 13px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
 @media(max-width:600px) { .pointCloudPanel { padding: 12px; } }
+
+.flyHud {position:absolute;left:14px;bottom:14px;display:grid;gap:4px;pointer-events:none;background:#101b22df;border:1px solid #395160;border-radius:7px;padding:10px 14px;color:#c1d3db;font-size:12px;max-width:calc(100% - 28px);}
+.flyHud strong {color:#61d8c7;} .flyToolbar {border-top:1px solid #395160;padding-top:12px;} .stationViewSwitch {border-color:#61d8c7;font-weight:600;}
+
+.groundNote{font-size:.8rem;color:#97aebc}.realWorldBar{padding:12px;border:1px solid #355567;background:#102530;border-radius:8px;display:grid;gap:8px}.nearestWorld{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.realWorldBar>span{font-size:.8rem;color:#a8bbc6}.stationMarker.nearStation:not(.highlightStation){box-shadow:0 0 0 3px #6bd9ba88;border-color:#6bd9ba}

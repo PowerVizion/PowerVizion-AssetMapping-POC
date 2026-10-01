@@ -1,3 +1,4 @@
+import {allowedDevOrigin} from './dev-origin.js';
 import express from 'express';
 import { readFile, open, rename, unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -116,7 +117,7 @@ export function terrestrialEvidenceRouter(options) {
     res.set('Cache-Control', 'no-store');
     // Same local admin UI only; do not allow cross-site form submissions to mutate CSV.
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-      if (req.get('origin') && req.get('origin') !== 'http://127.0.0.1:5173') return res.status(403).json({ error: 'Origin not allowed' });
+      if (req.get('origin') && !allowedDevOrigin(req.get('origin'))) return res.status(403).json({ error: 'Origin not allowed' });
       if (!req.is('application/json')) return res.status(415).json({ error: 'JSON body required' });
     }
     next();

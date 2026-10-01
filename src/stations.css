@@ -16,3 +16,5 @@
 .stationNeighbors li {display:grid;grid-template-columns:1fr 80px auto;align-items:center;gap:12px;}
 .stationConnectionsToggle {display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;}
 .stationConnectionsToggle input {width:auto;}
+
+.viewToggle{display:flex;gap:6px;flex-wrap:wrap}.viewToggle button{font-weight:700;letter-spacing:.06em}.viewToggle button[aria-pressed="true"]{background:#14556c;color:#e3faff;border-color:#62bfd5}

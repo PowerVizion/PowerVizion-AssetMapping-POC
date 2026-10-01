@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {defaultPanoramaView,normalizePanoramaView,dragPanorama,zoomPanorama} from './panoramaView.js';
+test('yaw wraps continuously; pitch and FOV cannot flip or become invalid',()=>{assert.deepEqual(normalizePanoramaView({yaw:-10,pitch:999,fov:5}),{yaw:350,pitch:85,fov:35});assert.deepEqual(normalizePanoramaView({yaw:730,pitch:-999,fov:999}),{yaw:10,pitch:-85,fov:100});assert.deepEqual(normalizePanoramaView({yaw:NaN,pitch:Infinity,fov:NaN}),defaultPanoramaView);});
+test('drag supports a complete rotation and vertical look without translation',()=>{const turn=dragPanorama(defaultPanoramaView,2880,0,1000,600);assert.ok(Math.abs(turn.yaw)<1e-10);assert.equal(dragPanorama(defaultPanoramaView,0,100,1000,600).pitch,12.5);assert.equal(dragPanorama(defaultPanoramaView,0,10000,1000,600).pitch,85);});
+test('wheel zoom and reset are bounded; per-image memory keeps independent views',()=>{assert.equal(zoomPanorama(defaultPanoramaView,-100).fov,71.5);const a=normalizePanoramaView({yaw:100,pitch:30,fov:50});const b=normalizePanoramaView({yaw:220,pitch:-20,fov:90});const memory=new Map([['001',a],['057',b]]);assert.deepEqual(normalizePanoramaView(memory.get('001')),a);assert.deepEqual(normalizePanoramaView(memory.get('057')),b);assert.deepEqual(normalizePanoramaView(),defaultPanoramaView);});
