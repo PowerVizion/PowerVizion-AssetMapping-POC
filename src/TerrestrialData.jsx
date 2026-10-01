@@ -7,6 +7,7 @@ import './panorama360.css';
 import { AssetAssociation, evidenceRequest } from './TerrestrialEvidence.jsx';
 
 const Panorama360 = lazy(() => import('./Panorama360.jsx'));
+const PlacementWorkbench = lazy(() => import('./PlacementWorkbench.jsx'));
 const PointCloudViewer = lazy(() => import('./PointCloudViewer.jsx'));
 
 const API = 'http://127.0.0.1:4000/api/terrestrial-datasets';
@@ -16,7 +17,7 @@ async function getJson(url, signal) {
   return response.json();
 }
 
-export default function TerrestrialData({ initialTarget }) {
+export default function TerrestrialData({ initialTarget, leaveGuard }) {
   const [datasets, setDatasets] = useState(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -24,6 +25,7 @@ export default function TerrestrialData({ initialTarget }) {
   const [panoramaSetup, setPanoramaSetup] = useState(initialTarget?.setup_id || null);
   const [focusStation, setFocusStation] = useState(null);
   const [cloudDataset, setCloudDataset] = useState(null);
+  const [workbenchDataset,setWorkbenchDataset]=useState(null);
   const [viewerStates,setViewerStates]=useState({});
   const panoramaViews=useRef(new Map());
   const [associations, setAssociations] = useState(null);
@@ -56,6 +58,7 @@ export default function TerrestrialData({ initialTarget }) {
     });
     return () => controller.abort();
   }, [attempt]);
+  if(workbenchDataset)return <Suspense fallback={<p role="status">Loading placement workbench…</p>}><PlacementWorkbench dataset={workbenchDataset} panoramaViews={panoramaViews} leaveGuard={leaveGuard} onBack={()=>setWorkbenchDataset(null)}/></Suspense>;
   if (cloudDataset) return <Suspense fallback={<main className="page"><p role="status">Loading 3D viewer…</p></main>}><PointCloudViewer resumeState={viewerStates[cloudDataset.dataset_id]} onSaveState={state=>setViewerStates(previous=>({...previous,[cloudDataset.dataset_id]:state}))} dataset={cloudDataset} focusSetup={focusStation} onOpenPanorama={row => { setPanoramaSetup(row.setup_id); setSelected(cloudDataset); setCloudDataset(null); }} onBack={() => { setCloudDataset(null); setFocusStation(null); }} /></Suspense>;
   if (selected) return <PanoramaBrowser panoramaViews={panoramaViews} dataset={selected} initialSetup={panoramaSetup} onReturnToStation={(row,resumeGround=false) => { setViewerStates(previous=>({...previous,[selected.dataset_id]:returnToPointCloud(previous[selected.dataset_id],row,resumeGround)}));setFocusStation(row?.setup_id||null); setCloudDataset(selected); setSelected(null); }} onChanged={() => setAssociationVersion(value => value + 1)} onBack={() => { setSelected(null); setAssociationVersion(value => value + 1); }} />;
   return <main className="page terrestrialPage">
@@ -75,7 +78,7 @@ export default function TerrestrialData({ initialTarget }) {
         <div className="terrestrialHeading"><div><p className="eyebrow">{dataset.dataset_id}</p><h2>{dataset.display_name}</h2></div><span className={`badge ${available ? 'good' : 'warn'}`}>Status: {available ? 'Available' : 'Missing'}</span></div>
         <dl className="terrestrialFacts">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? 'Unknown'}</dd></div>)}</dl>
         {local.panorama_count_matches_expected === false && <p role="status">Some expected panoramas are missing. Available images can still be browsed.</p>}
-        <div className="terrestrialFooter"><p>Manual associations are for admin validation. Point and setup counts are dataset metadata.</p>{(dataset.web_point_cloud || dataset.point_cloud_variants?.length) && <button onClick={() => setCloudDataset(dataset)}>Open 3D Point Cloud</button>}<button onClick={() => { setPanoramaSetup(null); setSelected(dataset); }}><Images size={18} />Browse Panoramas</button></div>
+        <div className="terrestrialFooter"><p>Manual associations are for admin validation. Point and setup counts are dataset metadata.</p>{(dataset.web_point_cloud || dataset.point_cloud_variants?.length) && <button onClick={() => setCloudDataset(dataset)}>Open 3D Point Cloud</button>}<button onClick={()=>setWorkbenchDataset(dataset)}>Station Placement</button><button onClick={() => { setPanoramaSetup(null); setSelected(dataset); }}><Images size={18} />Browse Panoramas</button></div>
       </section>;
     })}
   </main>;
@@ -127,7 +130,7 @@ function PanoramaBrowser({ dataset, initialSetup, onChanged, onBack, onReturnToS
   </main>;
 }
 
-function PanoramaImage({ src, filename }) {
+export function PanoramaImage({ src, filename }) {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [status, setStatus] = useState('loading');

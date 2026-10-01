@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import L from 'leaflet';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet';
@@ -1222,6 +1222,7 @@ function CompactTable({ rows, fields }) {
 }
 
 function App() {
+  const leaveGuard=useRef(null);
   const [page, setPage] = useState('Dashboard');
   const [panoramaTarget, setPanoramaTarget] = useState(null);
   function openPanorama(row) {
@@ -1265,7 +1266,7 @@ function App() {
   };
 
   const content = useMemo(() => {
-    if (page === 'Terrestrial Data') return <TerrestrialData initialTarget={panoramaTarget} />;
+    if (page === 'Terrestrial Data') return <TerrestrialData initialTarget={panoramaTarget} leaveGuard={leaveGuard} />;
     if (page === 'Asset Map') return <AssetMapPage assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} onOpenSurvey={openSurvey} />;
     if (page === 'Admin Review') return <AdminReview assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} reload={reload} options={options} onOpenPanorama={openPanorama} />;
     if (page === 'Client View') return <ClientView assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} detail={detail} />;
@@ -1273,7 +1274,7 @@ function App() {
     return <Dashboard summary={summary} assets={assets} setPage={setPage} setSelectedId={setSelectedId} />;
   }, [page, assets, selectedId, detail, summary, preview, options, panoramaTarget]);
 
-  return <><Header page={page} setPage={next => { setPanoramaTarget(null); setPage(next); }} />{content}</>;
+  return <><Header page={page} setPage={next => {const go=()=>{setPanoramaTarget(null);setPage(next);};if(leaveGuard.current)leaveGuard.current(go);else go();}} />{content}</>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
