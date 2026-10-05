@@ -1,4 +1,4 @@
-import {devCors} from './dev-origin.js';
+﻿import {devCors} from './dev-origin.js';
 import { terrestrialStationsRouter } from './terrestrial-stations.js';
 import path from 'node:path';
 import { terrestrialPointCloudRouter } from './terrestrial-pointcloud.js';
@@ -120,10 +120,11 @@ app.get('/api/assets/:id', async (req, res) => {
   const mediaRows = all('SELECT * FROM asset_media WHERE asset_location_id = ? ORDER BY id', [asset.id]);
   const media = await Promise.all(mediaRows.map(async row => ({ ...row, url: await mediaUrl(row) })));
   const detections = all('SELECT * FROM ai_detections WHERE asset_location_id = ? ORDER BY confidence DESC', [asset.id]);
+  const observations = all('SELECT * FROM asset_observations WHERE asset_location_id = ? ORDER BY observation_date DESC, created_at DESC', [asset.id]);
   const components = all('SELECT * FROM components WHERE asset_location_id = ? ORDER BY created_at DESC', [asset.id]);
   const exceptions = all('SELECT * FROM data_quality_exceptions WHERE asset_location_id = ? ORDER BY created_at DESC', [asset.id]);
   const annotations = all('SELECT * FROM media_annotations WHERE asset_location_id = ? ORDER BY updated_at DESC', [asset.id]);
-  res.json({ asset: withCounts(asset), media, detections, components, exceptions, annotations });
+  res.json({ asset: withCounts(asset), media, detections, observations, components, exceptions, annotations });
 });
 
 app.patch('/api/assets/:id/status', (req, res) => {
@@ -301,3 +302,4 @@ app.get('/api/export/preview', (req, res) => {
 app.listen(port, '127.0.0.1', () => {
   console.log(`PowerVizion Asset Mapping POC API running at http://127.0.0.1:${port}`);
 });
+

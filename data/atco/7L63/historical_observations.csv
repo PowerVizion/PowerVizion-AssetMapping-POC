@@ -1,1 +1,6 @@
-circuit,structure_id,historical_anomaly_id,inspection_date,severity,physical_category,description,failure_class,component,problem,cause,remedy,default_priority,recommended_priority,fire_ignition_flag,source
+﻿circuit,structure_id,historical_anomaly_id,inspection_date,severity,physical_category,description,failure_class,component,problem,cause,remedy,default_priority,recommended_priority,fire_ignition_flag,source
+7L63,7L63-514,HIST-7L63-514-001,2025-10-26,Major,Insulator,Porcelain insulator radial crack,,,,,,,,,ATCO Historical Comprehensive Inspection
+7L63,7L63-519,HIST-7L63-519-001,2025-10-26,Major,Insulator,Porcelain insulator damage including cracking / missing skirt,,,,,,,,,ATCO Historical Comprehensive Inspection
+7L63,7L63-525,HIST-7L63-525-001,2025-10-26,Minor,Cross Arm,Crossarm splitting / cracking,,,,,,,,,ATCO Historical Comprehensive Inspection
+7L63,7L63-543,HIST-7L63-543-001,2025-10-26,Major,Structure,Deep splitting / multiple structural condition noted,,,,,,,,,ATCO Historical Comprehensive Inspection
+7L63,7L63-546,HIST-7L63-546-001,2025-10-26,Major,Structure,Woodpecker damage / suspected internal decay,,,,,,,,,ATCO Historical Comprehensive Inspection
