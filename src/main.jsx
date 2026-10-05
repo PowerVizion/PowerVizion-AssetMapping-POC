@@ -997,12 +997,27 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
   const [mediaIndex, setMediaIndex] = useState(0);
   const [form, setForm] = useState(emptyForm);
   const [exception, setException] = useState({ exception_type: 'Missing nameplate data', recommended_action: '', reviewer_notes: '' });
+  const [workspaceTab, setWorkspaceTab] = useState('record');
 
-  useEffect(() => setMediaIndex(0), [selectedId]);
+  useEffect(() => {
+    setMediaIndex(0);
+    setWorkspaceTab('record');
+  }, [selectedId]);
   useEffect(() => {
     const firstMedia = detail?.media?.[0]?.id || '';
     setForm(prev => ({ ...emptyForm, source_media: firstMedia, component_type: options['Component Type']?.[0] || prev.component_type }));
   }, [detail?.asset?.id, options]);
+
+  useEffect(() => {
+    const currentMedia = detail?.media?.[mediaIndex];
+
+    if (!currentMedia?.id) return;
+
+    setForm(prev => ({
+      ...prev,
+      source_media: currentMedia.id
+    }));
+  }, [mediaIndex, detail?.asset?.id]);
 
   async function approveDetection(detection) {
     await api('/components', {
@@ -1022,7 +1037,19 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
 
   async function saveComponent(event) {
     event.preventDefault();
-    await api('/components', { method: 'POST', body: { ...form, asset_location_id: detail.asset.id } });
+    const currentMediaId =
+      detail?.media?.[mediaIndex]?.id ||
+      form.source_media ||
+      '';
+
+    await api('/components', {
+      method: 'POST',
+      body: {
+        ...form,
+        source_media: currentMediaId,
+        asset_location_id: detail.asset.id
+      }
+    });
     await reload();
   }
 
@@ -1032,10 +1059,126 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
     await reload();
   }
 
+  async function deleteComponentRecord(component) {
+    const confirmed = window.confirm(
+      'Delete component record "' +
+        (component.component_type || component.id) +
+        '"?'
+    );
+
+    if (!confirmed) return;
+
+    await api('/components/' + component.id, {
+      method: 'DELETE'
+    });
+
+    await reload();
+  }
+
+  async function deleteExceptionRecord(item) {
+    const confirmed = window.confirm(
+      'Delete data quality exception "' +
+        (item.exception_type || item.id) +
+        '"?'
+    );
+
+    if (!confirmed) return;
+
+    await api('/exceptions/' + item.id, {
+      method: 'DELETE'
+    });
+
+    await reload();
+  }
+
   async function setStatus(review_status) {
     await api(`/assets/${detail.asset.id}/status`, { method: 'PATCH', body: { review_status } });
     await reload();
   }
+
+  const historicalObservations = detail?.observations || [];
+  const historyIndexes = detail?.historyIndexes || [];
+  const latestHistoryIndex = historyIndexes[0] || null;
+  const historicalDataIndexed = Boolean(latestHistoryIndex);
+
+  const severityScore = severity => {
+    const value = String(severity || '').toLowerCase();
+
+    if (value === 'critical') return 3;
+    if (value === 'major') return 2;
+    if (value === 'minor') return 1;
+
+    return 0;
+  };
+
+  const historyAnomalyNumber = observation => {
+    const parts = String(observation?.id || '').split('-');
+    return parts[parts.length - 1] || 'Unknown';
+  };
+
+  const sortedHistoricalObservations = [...historicalObservations].sort(
+    (a, b) => {
+      const dateCompare = String(b.observation_date || '').localeCompare(
+        String(a.observation_date || '')
+      );
+
+      if (dateCompare !== 0) return dateCompare;
+
+      const severityCompare =
+        severityScore(b.severity) - severityScore(a.severity);
+
+      if (severityCompare !== 0) return severityCompare;
+
+      return (
+        Number(historyAnomalyNumber(a)) -
+        Number(historyAnomalyNumber(b))
+      );
+    }
+  );
+
+  const highestHistoricalSeverity =
+    historicalObservations.reduce((best, observation) => {
+      if (
+        !best ||
+        severityScore(observation.severity) > severityScore(best)
+      ) {
+        return observation.severity;
+      }
+
+      return best;
+    }, '') || '—';
+
+  const historicalPriorities = historicalObservations
+    .map(observation => observation.recommended_priority)
+    .filter(priority => /^P\d+$/i.test(String(priority || '')))
+    .sort(
+      (a, b) =>
+        Number(String(a).replace(/\D/g, '')) -
+        Number(String(b).replace(/\D/g, ''))
+    );
+
+  const highestHistoricalPriority =
+    historicalPriorities[0] || '—';
+
+  const formatHistoricalDate = value => {
+    if (!value) return 'Not indexed';
+
+    const parts = String(value).split('-').map(Number);
+
+    if (parts.length !== 3 || parts.some(Number.isNaN)) {
+      return value;
+    }
+
+    return new Date(
+      parts[0],
+      parts[1] - 1,
+      parts[2]
+    ).toLocaleDateString('en-CA', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
 
   return (
     <main className="reviewLayout">
@@ -1059,74 +1202,602 @@ function AdminReview({ assets, selectedId, setSelectedId, detail, reload, option
                 {(options['Asset Review Status'] || []).map(item => <option key={item}>{item}</option>)}
               </select>
             </section>
-            <section className="panel reviewMapPanel">
-              <div className="panelHead">
-                <div><h2>Interactive Asset Map</h2><p>Click a marker or asset card to focus the review workspace</p></div>
-                <Badge value="GPS Coordinates" />
+            <section className="clientSummary">
+              <div>
+                <strong>{(detail.observations || []).length}</strong>
+                <span>Historical</span>
               </div>
-              <InteractiveAssetMap assets={assets} selectedId={selectedId} setSelectedId={setSelectedId} className="reviewLeafletMap" />
+              <div>
+                <strong>{detail.media.length}</strong>
+                <span>Media</span>
+              </div>
+              <div>
+                <strong>{detail.detections.length}</strong>
+                <span>Candidates</span>
+              </div>
+              <div>
+                <strong>{detail.components.length}</strong>
+                <span>Components</span>
+              </div>
+              <div>
+                <strong>{detail.exceptions.length}</strong>
+                <span>Data Quality</span>
+              </div>
             </section>
-            <AdminTerrestrialEvidence key={selectedId} assetId={selectedId} onOpen={onOpenPanorama} />
-            <div className="twoCol">
-              <MediaViewer
-                detail={detail}
-                mediaIndex={mediaIndex}
-                setMediaIndex={setMediaIndex}
-                annotatable
-                annotations={detail.annotations || []}
-                detections={detail.detections || []}
-                assetId={detail.asset.id}
-                onAnnotationsChanged={reload}
-              />
+
+            <div className="annotationToolbar">
+              <button
+                type="button"
+                className={workspaceTab === 'record' ? 'activeTool' : ''}
+                onClick={() => setWorkspaceTab('record')}
+              >
+                Asset Record
+              </button>
+
+              <button
+                type="button"
+                className={workspaceTab === 'inspection' ? 'activeTool' : ''}
+                onClick={() => setWorkspaceTab('inspection')}
+              >
+                Inspection Review
+              </button>
+
+              <button
+                type="button"
+                className={workspaceTab === 'data' ? 'activeTool' : ''}
+                onClick={() => setWorkspaceTab('data')}
+              >
+                Asset Data
+              </button>
+
+              <button
+                type="button"
+                className={workspaceTab === 'spatial' ? 'activeTool' : ''}
+                onClick={() => setWorkspaceTab('spatial')}
+              >
+                Spatial / Terrestrial
+              </button>
+            </div>
+
+            {workspaceTab === 'record' && (
               <section className="panel">
-                <div className="panelHead"><div><h2>AI / Manual Candidates</h2><p>Approve visible components into structured records</p></div><span>{detail.detections.length}</span></div>
+                <div className="panelHead">
+                  <div>
+                    <h2>Asset Record</h2>
+                    <p>Persistent inspection, condition and asset-history record</p>
+                  </div>
+                  <Badge value={`${(detail.observations || []).length} Historical`} />
+                </div>
+
                 <div className="candidateList">
-                  {detail.detections.map(detection => (
-                    <div className="candidate" key={detection.id}>
+                  <div className="candidate">
+                    <div>
+                      <strong>Historical Inspection Summary</strong>
+
+                      {historicalDataIndexed ? (
+                        <span>
+                          {historicalObservations.length} historical {
+                            historicalObservations.length === 1
+                              ? 'deficiency'
+                              : 'deficiencies'
+                          }
+                          {' | '}
+                          Last indexed inspection: {
+                            formatHistoricalDate(
+                              latestHistoryIndex?.inspection_date
+                            )
+                          }
+                          {' | '}
+                          Highest severity: {highestHistoricalSeverity}
+                          {' | '}
+                          Highest ATCO priority: {
+                            highestHistoricalPriority
+                          }
+                        </span>
+                      ) : (
+                        <span>
+                          Historical inspection data has not been indexed
+                          for this asset.
+                        </span>
+                      )}
+                    </div>
+
+                    <Badge
+                      value={
+                        historicalDataIndexed
+                          ? 'Historical Data Indexed'
+                          : 'Not Indexed'
+                      }
+                    />
+                  </div>
+
+                  {sortedHistoricalObservations.map(observation => (
+                    <div className="candidate" key={observation.id}>
                       <div>
-                        <strong>{detection.component_type}</strong>
-                        <span>{detection.component_subtype} | {(detection.confidence * 100).toFixed(0)}%</span>
+                        <strong>
+                          {formatHistoricalDate(
+                            observation.observation_date
+                          )}
+                          {' | '}
+                          Historical Anomaly {
+                            historyAnomalyNumber(observation)
+                          }
+                        </strong>
+
+                        <span>
+                          {observation.inspection_type ||
+                            'Historical Inspection'}
+                          {' | '}
+                          {observation.severity || 'Unclassified'}
+                          {' — '}
+                          {observation.physical_category || 'Asset'}
+                        </span>
+
+                        <span>
+                          {observation.description ||
+                            'No inspector observation recorded.'}
+                        </span>
+
+                        <span>
+                          ATCO: {
+                            [
+                              observation.component,
+                              observation.problem,
+                              observation.cause,
+                              observation.remedy
+                            ]
+                              .filter(Boolean)
+                              .join(' → ') ||
+                            'Classification not recorded'
+                          }
+                        </span>
+
+                        {observation.failure_class && (
+                          <span>
+                            Failure Class: {
+                              observation.failure_class
+                            }
+                          </span>
+                        )}
+
+                        <span>
+                          Default Priority: {
+                            observation.default_priority || '—'
+                          }
+                          {' | '}
+                          Recommended Priority: {
+                            observation.recommended_priority || '—'
+                          }
+                          {' | '}
+                          Fire Ignition: {
+                            observation.fire_ignition_flag || '—'
+                          }
+                        </span>
+
+                        <span>
+                          Source: {
+                            observation.source ||
+                            'Historical inspection record'
+                          }
+                        </span>
                       </div>
-                      <Badge value={detection.status} />
-                      <button onClick={() => approveDetection(detection)}><ShieldCheck size={16} /> Approve</button>
-                      <button onClick={async () => { await api(`/detections/${detection.id}`, { method: 'PATCH', body: { status: 'Rejected' } }); await reload(); }}>Reject</button>
+
+                      <Badge
+                        value={
+                          observation.recommended_priority
+                            ? (observation.severity || 'Historical') +
+                              ' | ' +
+                              observation.recommended_priority
+                            : observation.severity || 'Historical'
+                        }
+                      />
                     </div>
                   ))}
+
+                  {historicalDataIndexed &&
+                    historicalObservations.length === 0 && (
+                      <div className="candidate">
+                        <div>
+                          <strong>
+                            No historical deficiencies identified
+                          </strong>
+
+                          <span>
+                            No historical deficiencies identified in
+                            the currently indexed inspection dataset.
+                          </span>
+
+                          <span>
+                            Indexed inspection: {
+                              formatHistoricalDate(
+                                latestHistoryIndex?.inspection_date
+                              )
+                            }
+                          </span>
+                        </div>
+
+                        <Badge value="0 Deficiencies" />
+                      </div>
+                    )}
+
+                  {!historicalDataIndexed &&
+                    historicalObservations.length === 0 && (
+                      <div className="candidate">
+                        <div>
+                          <strong>
+                            Historical data not indexed
+                          </strong>
+
+                          <span>
+                            No indexed historical inspection dataset is
+                            currently associated with this asset.
+                          </span>
+                        </div>
+
+                        <Badge value="Not Indexed" />
+                      </div>
+                    )}
+
+                  <div className="candidate">
+                    <div>
+                      <strong>
+                        {detail.media?.[0]?.caption?.match(/\d{4}-\d{2}-\d{2}/)?.[0] || 'Current Inspection'}
+                        {' | '}PowerViz 8K Inspection
+                      </strong>
+                      <span>{detail.media.length} linked inspection evidence records</span>
+                    </div>
+                    <Badge value="Inspection Evidence" />
+                  </div>
+
+                  {detail.components.length > 0 && (
+                    <>
+                      {detail.components.map(component => {
+                        const evidence = (detail.media || []).find(
+                          media => media.id === component.source_media
+                        );
+
+                        return (
+                          <div className="candidate" key={component.id}>
+                            <div>
+                              <strong>Verified Component Record</strong>
+
+                              <span>
+                                {component.component_type || 'Component'}
+                                {component.component_subtype
+                                  ? ' | ' + component.component_subtype
+                                  : ''}
+                              </span>
+
+                              <span>
+                                {component.material
+                                  ? 'Material: ' + component.material
+                                  : 'Material not recorded'}
+
+                                {component.phase
+                                  ? ' | Phase: ' + component.phase
+                                  : ''}
+
+                                {component.condition_rating
+                                  ? ' | Condition: ' + component.condition_rating
+                                  : ''}
+                              </span>
+
+                              <span>
+                                Source Evidence: {
+                                  evidence?.frame_number
+                                    ? 'Frame ' + evidence.frame_number
+                                    : component.source_media || 'Not linked'
+                                }
+                              </span>
+                            </div>
+
+                            <Badge value={component.verified_status || 'Verified'} />
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {detail.exceptions.length > 0 && (
+                    <>
+                      {detail.exceptions.map(item => (
+                        <div className="candidate" key={item.id}>
+                          <div>
+                            <strong>Data Quality Exception</strong>
+                            <span>{item.exception_type}</span>
+
+                            {item.recommended_action && (
+                              <span>
+                                Recommended Action: {item.recommended_action}
+                              </span>
+                            )}
+
+                            {item.reviewer_notes && (
+                              <span>{item.reviewer_notes}</span>
+                            )}
+                          </div>
+
+                          <Badge value={item.export_status || 'Open'} />
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  <div className="candidate">
+                    <div>
+                      <strong>Current Candidate Status</strong>
+                      <span>
+                        {detail.detections.length} AI / Manual Candidates identified from current evidence
+                      </span>
+                    </div>
+                    <Badge value={detail.detections.length ? 'Review Required' : '0 Identified'} />
+                  </div>
                 </div>
               </section>
-            </div>
-            <div className="twoCol">
-              <form className="panel formGrid" onSubmit={saveComponent}>
-                <div className="panelHead wide"><div><h2>Component Record</h2><p>Complete structured asset fields for export</p></div><button><Save size={16} /> Save</button></div>
-                <Select label="Component Type" value={form.component_type} options={options['Component Type']} onChange={v => setForm({ ...form, component_type: v })} />
-                <Input label="Component Subtype" value={form.component_subtype} onChange={v => setForm({ ...form, component_subtype: v })} />
-                <Input label="Quantity" type="number" value={form.quantity} onChange={v => setForm({ ...form, quantity: Number(v) })} />
-                <Select label="Phase" value={form.phase} options={options.Phase} onChange={v => setForm({ ...form, phase: v })} />
-                <Input label="Material" value={form.material} onChange={v => setForm({ ...form, material: v })} />
-                <Input label="Manufacturer" value={form.manufacturer} onChange={v => setForm({ ...form, manufacturer: v })} />
-                <Input label="Model" value={form.model} onChange={v => setForm({ ...form, model: v })} />
-                <Input label="Serial Number" value={form.serial_number} onChange={v => setForm({ ...form, serial_number: v })} />
-                <Input label="Install Year" value={form.install_year} onChange={v => setForm({ ...form, install_year: v })} />
-                <Input label="Asset Tag" value={form.asset_tag} onChange={v => setForm({ ...form, asset_tag: v })} />
-                <Select label="Nameplate Visible" value={form.nameplate_visible} options={options['Nameplate Visible']} onChange={v => setForm({ ...form, nameplate_visible: v })} />
-                <Select label="Condition Rating" value={form.condition_rating} options={options['Condition Rating']} onChange={v => setForm({ ...form, condition_rating: v })} />
-                <Select label="Verified Status" value={form.verified_status} options={options['Verified Status']} onChange={v => setForm({ ...form, verified_status: v })} />
-                <Select label="Source Media" value={form.source_media} options={(detail.media || []).map(m => m.id)} onChange={v => setForm({ ...form, source_media: v })} />
-                <label className="wide">Reviewer Notes<textarea value={form.reviewer_notes} onChange={event => setForm({ ...form, reviewer_notes: event.target.value })} /></label>
-              </form>
-              <section className="panel">
-                <form className="formGrid" onSubmit={saveException}>
-                  <div className="panelHead wide"><div><h2>Data Quality Exception</h2><p>Capture missing or conflicting source data</p></div><button><FileWarning size={16} /> Add</button></div>
-                  <Select label="Exception Type" value={exception.exception_type} options={options['Exception Type']} onChange={v => setException({ ...exception, exception_type: v })} />
-                  <Input label="Recommended Action" value={exception.recommended_action} onChange={v => setException({ ...exception, recommended_action: v })} />
-                  <label className="wide">Reviewer Notes<textarea value={exception.reviewer_notes} onChange={event => setException({ ...exception, reviewer_notes: event.target.value })} /></label>
-                </form>
-                <h3>Approved Components</h3>
-                <CompactTable rows={detail.components} fields={['component_type', 'phase', 'condition_rating', 'verified_status']} />
-                <h3>Exceptions</h3>
-                <CompactTable rows={detail.exceptions} fields={['exception_type', 'recommended_action', 'export_status']} />
-              </section>
-            </div>
+            )}
+
+            {workspaceTab === 'inspection' && (
+              <div className="twoCol">
+                <MediaViewer
+                  detail={detail}
+                  mediaIndex={mediaIndex}
+                  setMediaIndex={setMediaIndex}
+                  annotatable
+                  annotations={detail.annotations || []}
+                  detections={detail.detections || []}
+                  assetId={detail.asset.id}
+                  onAnnotationsChanged={reload}
+                />
+
+                <section className="panel">
+                  <div className="panelHead">
+                    <div>
+                      <h2>AI / Manual Candidates</h2>
+                      <p>Review candidate findings from current inspection evidence</p>
+                    </div>
+                    <span>{detail.detections.length}</span>
+                  </div>
+
+                  <div className="candidateList">
+                    {detail.detections.length === 0 && (
+                      <div className="candidate">
+                        <div>
+                          <strong>No candidates identified</strong>
+                          <span>
+                            Current inspection evidence has not yet produced an AI or manual candidate.
+                          </span>
+                        </div>
+                        <Badge value="0 Identified" />
+                      </div>
+                    )}
+
+                    {detail.detections.map(detection => (
+                      <div className="candidate" key={detection.id}>
+                        <div>
+                          <strong>{detection.component_type}</strong>
+                          <span>
+                            {detection.component_subtype} | {(detection.confidence * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <Badge value={detection.status} />
+                        <button onClick={() => approveDetection(detection)}>
+                          <ShieldCheck size={16} /> Approve
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await api(`/detections/${detection.id}`, {
+                              method: 'PATCH',
+                              body: { status: 'Rejected' }
+                            });
+                            await reload();
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {workspaceTab === 'data' && (
+              <>
+                <div className="twoCol">
+                  <MediaViewer
+                    detail={detail}
+                    mediaIndex={mediaIndex}
+                    setMediaIndex={setMediaIndex}
+                    annotations={detail.annotations || []}
+                    detections={detail.detections || []}
+                    assetId={detail.asset.id}
+                    readOnlyAnnotations
+                  />
+
+                  <form className="panel formGrid" onSubmit={saveComponent}>
+                    <div className="panelHead wide">
+                      <div>
+                        <h2>Component Record</h2>
+                        <p>Build structured component data directly from visible inspection evidence</p>
+                      </div>
+                      <button><Save size={16} /> Save</button>
+                    </div>
+
+                    <Select label="Component Type" value={form.component_type} options={options['Component Type']} onChange={v => setForm({ ...form, component_type: v })} />
+                    <Input label="Component Subtype" value={form.component_subtype} onChange={v => setForm({ ...form, component_subtype: v })} />
+                    <Input label="Quantity" type="number" value={form.quantity} onChange={v => setForm({ ...form, quantity: Number(v) })} />
+                    <Select label="Phase" value={form.phase} options={options.Phase} onChange={v => setForm({ ...form, phase: v })} />
+                    <Input label="Material" value={form.material} onChange={v => setForm({ ...form, material: v })} />
+                    <Input label="Manufacturer" value={form.manufacturer} onChange={v => setForm({ ...form, manufacturer: v })} />
+                    <Input label="Model" value={form.model} onChange={v => setForm({ ...form, model: v })} />
+                    <Input label="Serial Number" value={form.serial_number} onChange={v => setForm({ ...form, serial_number: v })} />
+                    <Input label="Install Year" value={form.install_year} onChange={v => setForm({ ...form, install_year: v })} />
+                    <Input label="Asset Tag" value={form.asset_tag} onChange={v => setForm({ ...form, asset_tag: v })} />
+                    <Select label="Nameplate Visible" value={form.nameplate_visible} options={options['Nameplate Visible']} onChange={v => setForm({ ...form, nameplate_visible: v })} />
+                    <Select label="Condition Rating" value={form.condition_rating} options={options['Condition Rating']} onChange={v => setForm({ ...form, condition_rating: v })} />
+                    <Select label="Verified Status" value={form.verified_status} options={options['Verified Status']} onChange={v => setForm({ ...form, verified_status: v })} />
+
+                    <Select
+                      label="Source Media"
+                      value={form.source_media}
+                      options={(detail.media || []).map(m => m.id)}
+                      onChange={v => setForm({ ...form, source_media: v })}
+                    />
+
+                    <label className="wide">
+                      Reviewer Notes
+                      <textarea
+                        value={form.reviewer_notes}
+                        onChange={event => setForm({ ...form, reviewer_notes: event.target.value })}
+                      />
+                    </label>
+                  </form>
+                </div>
+
+                <section className="panel">
+                  <div className="panelHead">
+                    <div>
+                      <h2>Asset Data Quality</h2>
+                      <p>Track missing, conflicting or unverified asset information</p>
+                    </div>
+                    <span>{detail.exceptions.length}</span>
+                  </div>
+
+                  <form className="formGrid" onSubmit={saveException}>
+                    <Select label="Exception Type" value={exception.exception_type} options={options['Exception Type']} onChange={v => setException({ ...exception, exception_type: v })} />
+                    <Input label="Recommended Action" value={exception.recommended_action} onChange={v => setException({ ...exception, recommended_action: v })} />
+
+                    <label className="wide">
+                      Reviewer Notes
+                      <textarea
+                        value={exception.reviewer_notes}
+                        onChange={event => setException({ ...exception, reviewer_notes: event.target.value })}
+                      />
+                    </label>
+
+                    <div className="wide">
+                      <button><FileWarning size={16} /> Add Data Quality Exception</button>
+                    </div>
+                  </form>
+
+                  <h3>Approved Components</h3>
+
+                  <div className="candidateList">
+                    {detail.components.length === 0 && (
+                      <div className="candidate">
+                        <div>
+                          <strong>No component records</strong>
+                          <span>No verified component data has been saved for this asset.</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {detail.components.map(component => {
+                      const evidence = (detail.media || []).find(
+                        media => media.id === component.source_media
+                      );
+
+                      return (
+                        <div className="candidate" key={component.id}>
+                          <div>
+                            <strong>{component.component_type || 'Component'}</strong>
+
+                            <span>
+                              {component.component_subtype || 'No subtype'}
+                              {component.phase
+                                ? ' | Phase: ' + component.phase
+                                : ''}
+                            </span>
+
+                            <span>
+                              {component.condition_rating
+                                ? 'Condition: ' + component.condition_rating
+                                : 'Condition not recorded'}
+
+                              {evidence?.frame_number
+                                ? ' | Evidence: Frame ' + evidence.frame_number
+                                : ''}
+                            </span>
+                          </div>
+
+                          <Badge value={component.verified_status || 'Verified'} />
+
+                          <button
+                            type="button"
+                            onClick={() => deleteComponentRecord(component)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <h3>Data Quality Exceptions</h3>
+
+                  <div className="candidateList">
+                    {detail.exceptions.length === 0 && (
+                      <div className="candidate">
+                        <div>
+                          <strong>No data quality exceptions</strong>
+                          <span>No open data-quality records are associated with this asset.</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {detail.exceptions.map(item => (
+                      <div className="candidate" key={item.id}>
+                        <div>
+                          <strong>{item.exception_type}</strong>
+
+                          <span>
+                            {item.recommended_action ||
+                              'No recommended action recorded'}
+                          </span>
+                        </div>
+
+                        <Badge value={item.export_status || 'Open'} />
+
+                        <button
+                          type="button"
+                          onClick={() => deleteExceptionRecord(item)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </>
+            )}
+
+            {workspaceTab === 'spatial' && (
+              <>
+                <section className="panel reviewMapPanel">
+                  <div className="panelHead">
+                    <div>
+                      <h2>Interactive Asset Map</h2>
+                      <p>Click a marker or asset card to focus the review workspace</p>
+                    </div>
+                    <Badge value="GPS Coordinates" />
+                  </div>
+
+                  <InteractiveAssetMap
+                    assets={assets}
+                    selectedId={selectedId}
+                    setSelectedId={setSelectedId}
+                    className="reviewLeafletMap"
+                  />
+                </section>
+
+                <AdminTerrestrialEvidence
+                  key={selectedId}
+                  assetId={selectedId}
+                  onOpen={onOpenPanorama}
+                />
+              </>
+            )}
+
           </>
         )}
       </div>

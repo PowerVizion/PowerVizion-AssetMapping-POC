@@ -121,10 +121,11 @@ app.get('/api/assets/:id', async (req, res) => {
   const media = await Promise.all(mediaRows.map(async row => ({ ...row, url: await mediaUrl(row) })));
   const detections = all('SELECT * FROM ai_detections WHERE asset_location_id = ? ORDER BY confidence DESC', [asset.id]);
   const observations = all('SELECT * FROM asset_observations WHERE asset_location_id = ? ORDER BY observation_date DESC, created_at DESC', [asset.id]);
+  const historyIndexes = all('SELECT * FROM asset_history_indexes WHERE asset_location_id = ? ORDER BY inspection_date DESC, created_at DESC', [asset.id]);
   const components = all('SELECT * FROM components WHERE asset_location_id = ? ORDER BY created_at DESC', [asset.id]);
   const exceptions = all('SELECT * FROM data_quality_exceptions WHERE asset_location_id = ? ORDER BY created_at DESC', [asset.id]);
   const annotations = all('SELECT * FROM media_annotations WHERE asset_location_id = ? ORDER BY updated_at DESC', [asset.id]);
-  res.json({ asset: withCounts(asset), media, detections, observations, components, exceptions, annotations });
+  res.json({ asset: withCounts(asset), media, detections, observations, historyIndexes, components, exceptions, annotations });
 });
 
 app.patch('/api/assets/:id/status', (req, res) => {
@@ -184,6 +185,79 @@ app.post('/api/exceptions', (req, res) => {
   ) VALUES (@id, @asset_location_id, @component_id, @exception_type, @recommended_action, @reviewer_notes, @export_status)`, exception);
   res.status(201).json(get('SELECT * FROM data_quality_exceptions WHERE id = ?', [exception.id]));
 });
+
+app.delete('/api/components/:id', (req, res) => {
+  const component = get(
+    'SELECT * FROM components WHERE id = ?',
+    [req.params.id]
+  );
+
+  if (!component) {
+    return res.status(404).json({ error: 'Component record not found' });
+  }
+
+  run(
+    'UPDATE data_quality_exceptions SET component_id = NULL WHERE component_id = ?',
+    [req.params.id]
+  );
+
+  run(
+    'DELETE FROM components WHERE id = ?',
+    [req.params.id]
+  );
+
+  if (component.detection_id) {
+    run(
+      "UPDATE ai_detections SET status = 'Candidate Finding' WHERE id = ?",
+      [component.detection_id]
+    );
+  }
+
+  run(
+    'INSERT INTO review_events (id, asset_location_id, event_type, event_note) VALUES (?, ?, ?, ?)',
+    [
+      id('evt'),
+      component.asset_location_id,
+      'component_deleted',
+      'Component record deleted: ' +
+        (component.component_type || component.id)
+    ]
+  );
+
+  res.json({ ok: true, id: req.params.id });
+});
+
+app.delete('/api/exceptions/:id', (req, res) => {
+  const exception = get(
+    'SELECT * FROM data_quality_exceptions WHERE id = ?',
+    [req.params.id]
+  );
+
+  if (!exception) {
+    return res.status(404).json({
+      error: 'Data quality exception not found'
+    });
+  }
+
+  run(
+    'DELETE FROM data_quality_exceptions WHERE id = ?',
+    [req.params.id]
+  );
+
+  run(
+    'INSERT INTO review_events (id, asset_location_id, event_type, event_note) VALUES (?, ?, ?, ?)',
+    [
+      id('evt'),
+      exception.asset_location_id,
+      'exception_deleted',
+      'Data quality exception deleted: ' +
+        (exception.exception_type || exception.id)
+    ]
+  );
+
+  res.json({ ok: true, id: req.params.id });
+});
+
 
 function annotationPayload(body, annotationId = id('ann')) {
   return {

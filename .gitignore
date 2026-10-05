@@ -22,3 +22,5 @@ data/atco/**/*.[jJ][pP][gG]
 data/atco/**/*.[jJ][pP][eE][gG]
 
 /data/atco-media/
+
+/data/backups/
