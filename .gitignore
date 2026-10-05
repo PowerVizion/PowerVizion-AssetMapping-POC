@@ -14,3 +14,9 @@ npm-debug.log*
 data/terrestrial_stations.csv.lock
 data/terrestrial_stations.csv.*.tmp
 data/terrestrial_stations.csv.bak
+
+# ATCO staging outputs and backups stay local
+data/atco-backups/
+data/atco/**/*.local.json
+data/atco/**/*.[jJ][pP][gG]
+data/atco/**/*.[jJ][pP][eE][gG]

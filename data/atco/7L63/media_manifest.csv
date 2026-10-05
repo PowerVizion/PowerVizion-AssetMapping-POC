@@ -1,0 +1,1 @@
+circuit,structure_id,inspection_date,clip,frame,image_file,source_path,uis_start_frame,uis_end_frame,uis_confidence,qc_status,qc_notes,approved_for_demo,future_s3_key,future_media_id,source_identity,source_manifest,source_row
