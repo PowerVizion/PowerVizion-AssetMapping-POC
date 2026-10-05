@@ -20,3 +20,5 @@ data/atco-backups/
 data/atco/**/*.local.json
 data/atco/**/*.[jJ][pP][gG]
 data/atco/**/*.[jJ][pP][eE][gG]
+
+/data/atco-media/
